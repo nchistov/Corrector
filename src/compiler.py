@@ -1,6 +1,7 @@
 from enum import Enum
 
 from parser import Parser
+from errors import CorrectorSyntaxError
 
 class WaitingFor(Enum):
     Procedure = 0
@@ -37,10 +38,12 @@ class Compiler:
                     if tok.type == 'KEYWORD' and tok.value == 'ЭТО':
                         self.state = WaitingFor.ProcedureName
                     else:
-                        ...
+                        raise CorrectorSyntaxError('На внешнем уровне программы не должно быть комманд')
                 case WaitingFor.ProcedureName:
                     if tok.type == 'WORD':
                         self.handle_procedure(tok.value)
+                    else:
+                        raise CorrectorSyntaxError(f'Ожидалось имя процедуры, получено: {tok.type}')
                 case WaitingFor.Command:
                     if tok.type == 'KEYWORD':
                         match tok.value:
@@ -50,8 +53,16 @@ class Compiler:
                                 ...
                     elif tok.type == "COMMAND":
                         self.handle_command(tok.value)
+                    elif tok.type == "WORD":
+                        if tok.value in self.procedures.keys():
+                            self.handle_procedure_call(tok.value)
                 case WaitingFor.Number:
                     ...
+                case WaitingFor.Symbol:
+                    if tok.type == 'SYMBOL':
+                        self.handle_symbol(tok.value)
+                    else:
+                        raise CorrectorSyntaxError('Ожидался символ')
 
         return self.bytecode
 
@@ -74,7 +85,16 @@ class Compiler:
     def handle_command(self, name):
         self.bytecode.append(self.commands[name])
         if name == 'ПИШИ':
-            self.state = WaitingFor.Number
+            self.state = WaitingFor.Symbol
+
+    def handle_symbol(self, symbol):
+        self.bytecode.append(symbol)
+        self.state = WaitingFor.Command
+
+    def handle_procedure_call(self, name: str):
+        self.bytecode.append(0x0E)
+        self.bytecode.append(self.procedures[name])
+
 
 c = Compiler()
-print(c.compile("ЭТО Программа ВПРАВО КОНЕЦ"))
+print(c.compile("ЭТО Программа ПИШИ ПРОБЕЛ КОНЕЦ ЭТО Другой ВПРАВО Программа КОНЕЦ"))

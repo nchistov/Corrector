@@ -1,5 +1,7 @@
 from typing import NamedTuple
 
+from errors import CorrectorParserError
+
 class Token(NamedTuple):
     type:   str
     value:  str | int
@@ -14,8 +16,8 @@ class Parser:
         self.symbols = ['ПУСТО', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
                    'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З','И', 'Й', 'К',
                    'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х',
-                   'Ц', 'Я', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я', 'ПРОБЕЛ'
-                                                                     '-', '+', '/', '*', '=', '<', '>', '(', ')', '[', ']', '{', '}', '.',
+                   'Ц', 'Я', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я', 'ПРОБЕЛ',
+                   '-', '+', '/', '*', '=', '<', '>', '(', ')', '[', ']', '{', '}', '.',
                    ',', '!', '?', ';', ':', '\'', '"', '#', '|', '$', '%', '~', '@']
         self.checks = ['Я=Л', 'Я>Л', 'Я<Л', 'Я#Л']
 
@@ -39,7 +41,7 @@ class Parser:
 
     def _get_tok(self) -> Token:
         if self.cur_token in self.symbols:
-            return Token('SYMBOL', self.cur_token, self.line, self.row)
+            return Token('SYMBOL', self.symbols.index(self.cur_token), self.line, self.row)
         elif self.cur_token in self.keywords:
             return Token('KEYWORD', self.cur_token, self.line, self.row)
         elif self.cur_token in self.commands:
@@ -47,6 +49,8 @@ class Parser:
         elif self.cur_token in self.checks:
             return Token('CHECK', self.cur_token, self.line, self.row)
         elif self.cur_token.isdigit():
+            if int(self.cur_token) >= 256:
+                raise CorrectorParserError('')
             return Token('NUMBER', int(self.cur_token), self.line, self.row)
         else:
             return Token('WORD', self.cur_token, self.line, self.row)
