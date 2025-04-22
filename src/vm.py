@@ -18,6 +18,7 @@ TAG <id> | 0x00 <id> -- начало тега
 0x0D -- POP_JUMP
 0x0E <tag> -- POP_JUMP_IF <tag>
 0x0F <tag> <tag> -- POP_JUMP_IF_ELSE <tag> <tag>
+0x10 -- END
 ...
 
 Проверки:
@@ -59,7 +60,7 @@ class Vm:
 
         if command:
             self.position = len(bytecode)
-            command.append(0x0D)
+            command.append(0x10)
             bytecode.extend(command)
         else:
             return
@@ -131,6 +132,8 @@ class Vm:
                     self._jump(args[0], self.position + len(args) + 1)
                 else:
                     self._jump(args[1], self.position + len(args) + 1)
+            case 0x10:
+                self.running = False
 
     def _jump(self, tag_id: int, position: int):
         self.stack.append(position)
