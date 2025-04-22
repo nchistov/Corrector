@@ -16,29 +16,25 @@ class Compiler:
     def __init__(self):
         self.bytecode = bytearray()
         self.state = WaitingFor.Procedure
-        self.indent = 0
 
         self.procedures = {}
-        self.commands = {'ВПРАВО': 0x05,
-                         'ВЛЕВО': 0x06,
-                         'ПИШИ': 0x07,
-                         'ЯЩИК+': 0x08,
-                         'ЯЩИК-': 0x09,
-                         'ОБМЕН': 0x0A,
-                         'ПЛЮС': 0x0B,
-                         'МИНУС': 0x0C,
-                         'СТОЯТЬ': 0x0D
-        }
+        self.tags = {}
         self.parser = Parser()
+        self.stack = []
+        self.commands = {
+            'ВПРАВО': (0x05,), 'ВЛЕВО': (0x06,), 'ПИШИ': 0x09, 'ЯЩИК+': (0x0A, 0x07),  # TODO: write ПИШИ realisation
+            'ЯЩИК-': (0x08, 0x09), 'ОБМЕН': (0x08, 0x0A, 0x07, 0x09), 'ПЛЮС': (0x0A, 0x0B, 0x09),
+            'МИНУС': (0x0A, 0x0C, 0x09), 'СТОЯТЬ': ()
+        }
 
-    def compile(self, code) -> bytearray:
+    def compile(self, code):
         for tok in self.parser.parse(code):
             match self.state:
                 case WaitingFor.Procedure:
                     if tok.type == 'KEYWORD' and tok.value == 'ЭТО':
                         self.state = WaitingFor.ProcedureName
                     else:
-                        raise CorrectorSyntaxError('На внешнем уровне программы не должно быть комманд')
+                        raise CorrectorSyntaxError('На внешнем уровне программы не должно быть команд')
                 case WaitingFor.ProcedureName:
                     if tok.type == 'WORD':
                         self.handle_procedure(tok.value)
@@ -64,33 +60,44 @@ class Compiler:
                     else:
                         raise CorrectorSyntaxError('Ожидался символ')
 
+        self.compose()
         return self.bytecode
 
     def handle_procedure(self, name):
-        self.procedures[name] = len(self.procedures)
-        self.bytecode.append(0x00)
-        self.bytecode.append(self.procedures[name])
+        tag_id = len(self.procedures)
+        self.procedures[name] = tag_id
+        self.tags[tag_id] = bytearray()
         self.state = WaitingFor.Command
-        self.indent += 1
+        self.stack.append(tag_id)
 
     def handle_end(self):
-        self.indent -= 1
-        self.bytecode.append(0x01)
+        self.tags[self.stack.pop()].append(0x0D)
 
-        if self.indent == 0:
+        if len(self.stack) == 0:
             self.state = WaitingFor.Procedure
         else:
             self.state = WaitingFor.Command
 
     def handle_command(self, name):
-        self.bytecode.append(self.commands[name])
+        self.tags[self.stack[-1]].extend(self.commands[name])
         if name == 'ПИШИ':
             self.state = WaitingFor.Symbol
 
     def handle_symbol(self, symbol):
-        self.bytecode.append(symbol)
+        self.tags[self.stack[-1]].extend(symbol)
         self.state = WaitingFor.Command
 
     def handle_procedure_call(self, name: str):
-        self.bytecode.append(0x0E)
-        self.bytecode.append(self.procedures[name])
+        self.tags[self.stack[-1]].append(0x02)
+        self.tags[self.stack[-1]].append(self.procedures[name])
+        self.tags[self.stack[-1]].append(0x0D)
+
+    def compose(self):
+        for tag_id, tag_bytecode in self.tags.items():
+            self.bytecode.extend((0x00, tag_id))
+            self.bytecode.extend(tag_bytecode)
+
+c = Compiler()
+bc = c.compile('ЭТО Программа ВЛЕВО ОБМЕН КОНЕЦ')
+for i in bc:
+    print(hex(i), end=' ')
