@@ -55,6 +55,23 @@ class Vm:
         self.position = 0
         self.running = False
 
+        self.operations = {0x02: self._load_tag,
+                           0x03: self._load_symbol,
+                           0x04: self._bin_op,
+                           0x05: self._right,
+                           0x06: self._left,
+                           0x07: self._pop_set_box,
+                           0x08: self._load_box,
+                           0x09: self._pop_set_tape,
+                           0x0A: self._load_tape,
+                           0x0B: self._pop_next_push,
+                           0x0C: self._pop_prev_push,
+                           0x0D: self._pop_jump,
+                           0x0E: self._pop_jump_if,
+                           0x0F: self._pop_jump_if_else,
+                           0x10: self._end
+                           }
+
     def run(self, bytecode: bytearray, command: bytearray):
         self.startup(bytecode)
 
@@ -76,6 +93,7 @@ class Vm:
             else:
                 self._run_command(byte)
                 if byte != 0x0D: self.position += 1  # Если не произошло перехода
+
     def startup(self, bytecode: bytearray):
         for pos, byte in enumerate(bytecode):
             if byte == 0x00:
@@ -85,65 +103,77 @@ class Vm:
         self.tags[tag_id] = pos
 
     def _run_command(self, command: int, *args):
-        match command:
-            case 0x02:
-                self.stack.append(self.tags[args[0]])
-            case 0x03:
-                self.stack.append(args[0])
-            case 0x04:
-                match args[0]:
-                    case 0x01:
-                        self.stack.append(self.stack.pop() == self.stack.pop())
-                    case 0x02:
-                        self.stack.append(self.stack.pop() > self.stack.pop())
-                    case 0x03:
-                        self.stack.append(self.stack.pop() < self.stack.pop())
-                    case 0x04:
-                        self.stack.append(self.stack.pop() != self.stack.pop())
-            case 0x05:
-                self.tape.move_right()
-            case 0x06:
-                self.tape.move_left()
-            case 0x07:
-                self.box = self.stack.pop()
-            case 0x08:
-                self.stack.append(self.box)
-            case 0x09:
-                self.tape.set(self.stack.pop())
-            case 0x0A:
-                self.stack.append(self.tape.get())
-            case 0x0B:
-                s = self.stack.pop()
-                if s == 71:
-                    raise errors.CorrectorCannotError('Не могу!')
-                self.stack.append(s + 1)
-            case 0x0C:
-                s = self.stack.pop()
-                if s == 0:
-                    raise errors.CorrectorCannotError('Не могу!')
-                self.stack.append(s - 1)
-            case 0x0D:
-                self._pop_jump()
-            case 0x0E:
-                if self.stack.pop():
-                    self._jump(args[0], self.position + len(args) + 1)
-            case 0x0F:
-                if self.stack.pop():
-                    self._jump(args[0], self.position + len(args) + 1)
-                else:
-                    self._jump(args[1], self.position + len(args) + 1)
-            case 0x10:
-                self.running = False
+        self.operations[command](*args)
 
-    def _jump(self, tag_id: int, position: int):
-        self.stack.append(position)
-        self.position = self.tags[tag_id]
+    def _load_tag(self, *args):
+        self.stack.append(self.tags[args[0]])
+
+    def _load_symbol(self, *args):
+        self.stack.append(args[0])
+
+    def _bin_op(self, *args):
+        match args[0]:
+            case 0x01:
+                self.stack.append(self.stack.pop() == self.stack.pop())
+            case 0x02:
+                self.stack.append(self.stack.pop() > self.stack.pop())
+            case 0x03:
+                self.stack.append(self.stack.pop() < self.stack.pop())
+            case 0x04:
+                self.stack.append(self.stack.pop() != self.stack.pop())
+
+    def _right(self, *args):
+        self.tape.move_right()
+
+    def _left(self, *args):
+        self.tape.move_left()
+
+    def _pop_set_box(self, *args):
+        self.box = self.stack.pop()
+
+    def _load_box(self, *args):
+        self.stack.append(self.box)
+
+    def _pop_set_tape(self, *args):
+        self.tape.set(self.stack.pop())
+
+    def _load_tape(self, *args):
+        self.stack.append(self.tape.get())
+
+    def _pop_next_push(self, *args):
+        s = self.stack.pop()
+        if s == 71:
+            raise errors.CorrectorCannotError('Не могу!')
+        self.stack.append(s + 1)
+
+    def _pop_prev_push(self, *args):
+        s = self.stack.pop()
+        if s == 0:
+            raise errors.CorrectorCannotError('Не могу!')
+        self.stack.append(s - 1)
 
     def _pop_jump(self):
         if self.stack:
             self.position = self.stack.pop()
         else:
             self.running = False
+
+    def _pop_jump_if(self, *args):
+        if self.stack.pop():
+            self._jump(args[0], self.position + len(args) + 1)
+
+    def _pop_jump_if_else(self, *args):
+        if self.stack.pop():
+            self._jump(args[0], self.position + len(args) + 1)
+        else:
+            self._jump(args[1], self.position + len(args) + 1)
+
+    def _end(self, *args):
+        self.running = False
+
+    def _jump(self, tag_id: int, position: int):
+        self.stack.append(position)
+        self.position = self.tags[tag_id]
 
 
 class Tape:
