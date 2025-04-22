@@ -1,23 +1,24 @@
 """
 БАЙТКОД:
 Конструкции:
-0x00 <id> -- определение процедуры
-0x02 <check's id> -- проверка
-0x03 <check's id> -- цикл пока
-0x04 <iteration number> -- цикл повтори
-0x01 -- завершение блока
+TAG <id> | 0x00 <id> -- начало тега
 
 Команды:
-0x05 -- ВПРАВО
-0x06 -- ВЛЕВО
-0x07 <symbol's code> -- ПИШИ <символ>
-0x08 -- ЯЩИК+
-0x09 -- ЯЩИК-
-0x0A -- ОБМЕН
-0x0B -- ПЛЮС
-0x0C -- МИНУС
-0x0D -- СТОЯТЬ
-0x0E <id> -- вызвать процедуру <id>
+0x02 <tag> -- LOAD_TAG <tag>
+0x03 <symbol> -- LOAD_SYMBOL <symbol>
+0x04 <op> -- BIN_OP <op> | <op> ::= 0x01 -- equal, 0x02 -- more, 0x03 -- less, 0x04 -- not equal
+0x05 -- RIGHT
+0x06 -- LEFT
+0x07 -- POP_SET_BOX
+0x08 -- LOAD_BOX
+0x09 -- POP_SET_TAPE
+0x0A -- LOAD_TAPE
+0x0B -- POP_NEXT_PUSH
+0x0C -- POP_PREV_PUSH
+0x0D -- POP_JUMP
+0x0E <tag> -- POP_JUMP_IF <tag>
+0x0F <tag> <tag> -- POP_JUMP_IF_ELSE <tag> <tag>
+...
 
 Проверки:
 0x00 -- Я=Л
@@ -28,6 +29,8 @@
 0x05 <symbol's code> -- не символ <symbol>
 """
 from enum import Enum
+
+from src import errors
 
 
 class WaitingFor(Enum):
@@ -44,48 +47,101 @@ class Vm:
     def __init__(self):
         self.box = 0
         self.tape = Tape()
+        self.stack = []
 
-        self.procedures = {}
+        self.tags = {}
         self.state = WaitingFor.Procedure
         self.position = 0
+        self.running = False
 
     def run(self, bytecode: bytearray, command: bytearray):
         self.startup(bytecode)
 
-        self.run_command(command)
+        if command:
+            self.position = len(bytecode)
+            command.append(0x0D)
+            bytecode.extend(command)
+        else:
+            return
+        self.running = True
+        while self.running:
+            print(hex(bytecode[self.position]))
+            if bytecode[self.position] in (0x02, 0x03, 0x04, 0x0E):
+                self._run_command(bytecode[self.position], bytecode[self.position+1])
+                self.position += 2
+            elif bytecode[self.position] == 0x0F:
+                self._run_command(bytecode[self.position], bytecode[self.position+1], bytecode[self.position+2])
+                self.position += 3
+            else:
+                self._run_command(bytecode[self.position])
+                self.position += 1
 
     def startup(self, bytecode: bytearray):
         for pos, byte in enumerate(bytecode):
             if byte == 0x00:
-                self.add_procedure(bytecode[pos + 1])
+                self.add_tag(bytecode[pos + 1], pos + 2)
 
-            self.position += 1
+    def add_tag(self, tag_id: int, pos: int):
+        self.tags[tag_id] = pos
 
-    def add_procedure(self, id: int):
-        self.procedures[id] = self.position + 1
-
-    def run_command(self, command: bytearray):
-        match command[0]:
+    def _run_command(self, command: int, *args):
+        match command:
+            case 0x02:
+                self.stack.append(self.tags[args[0]])
+            case 0x03:
+                self.stack.append(args[0])
+            case 0x04:
+                match args[0]:
+                    case 0x01:
+                        self.stack.append(self.stack.pop() == self.stack.pop())
+                    case 0x02:
+                        self.stack.append(self.stack.pop() > self.stack.pop())
+                    case 0x03:
+                        self.stack.append(self.stack.pop() < self.stack.pop())
+                    case 0x04:
+                        self.stack.append(self.stack.pop() != self.stack.pop())
             case 0x05:
                 self.tape.move_right()
             case 0x06:
                 self.tape.move_left()
             case 0x07:
-                self.tape.set(command[1])
+                self.box = self.stack.pop()
             case 0x08:
-                self.box = self.tape.get()
+                self.stack.append(self.box)
             case 0x09:
-                self.tape.set(self.box)
+                self.tape.set(self.stack.pop())
             case 0x0A:
-                b = self.box
-                self.box = self.tape.get()
-                self.tape.set(b)
+                self.stack.append(self.tape.get())
             case 0x0B:
-                self.tape.set(self.tape.get() + 1)
+                s = self.stack.pop()
+                if s == 71:
+                    raise errors.CorrectorCannotError('Не могу!')
+                self.stack.append(s + 1)
             case 0x0C:
-                self.tape.set(self.tape.get() - 1)
+                s = self.stack.pop()
+                if s == 0:
+                    raise errors.CorrectorCannotError('Не могу!')
+                self.stack.append(s - 1)
+            case 0x0D:
+                self._pop_jump()
             case 0x0E:
-                ...
+                if self.stack.pop():
+                    self._jump(args[0], self.position + len(args) + 1)
+            case 0x0F:
+                if self.stack.pop():
+                    self._jump(args[0], self.position + len(args) + 1)
+                else:
+                    self._jump(args[1], self.position + len(args) + 1)
+
+    def _jump(self, tag_id: int, position: int):
+        self.stack.append(position)
+        self.position = self.tags[tag_id]
+
+    def _pop_jump(self):
+        if self.stack:
+            self.position = self.stack.pop()
+        else:
+            self.running = False
 
 
 class Tape:
@@ -110,3 +166,11 @@ class Tape:
         if self.position == len(self.data) - 1:
             self.data.append(0)
         self.position += 1
+
+vm = Vm()
+bc = bytearray(bytes((0x00, 0x00, 0x03, 0x04, 0x09, 0x0D)))
+command = bytearray(bytes((0x02, 0x00, 0x0D)))
+
+vm.run(bc, command)
+print(vm.stack)
+print(vm.tape.get())
