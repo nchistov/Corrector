@@ -65,17 +65,16 @@ class Vm:
             return
         self.running = True
         while self.running:
-            print(hex(bytecode[self.position]))
-            if bytecode[self.position] in (0x02, 0x03, 0x04, 0x0E):
-                self._run_command(bytecode[self.position], bytecode[self.position+1])
-                self.position += 2
-            elif bytecode[self.position] == 0x0F:
-                self._run_command(bytecode[self.position], bytecode[self.position+1], bytecode[self.position+2])
-                self.position += 3
-            else:
-                self._run_command(bytecode[self.position])
-                self.position += 1
+            byte = bytecode[self.position]
 
+            if byte in (0x02, 0x03, 0x04, 0x0E):
+                self._run_command(byte, bytecode[self.position+1])
+                if byte != 0x0E: self.position += 2  # Если не произошло перехода
+            elif byte == 0x0F:
+                self._run_command(byte, bytecode[self.position+1], bytecode[self.position+2])
+            else:
+                self._run_command(byte)
+                if byte != 0x0D: self.position += 1  # Если не произошло перехода
     def startup(self, bytecode: bytearray):
         for pos, byte in enumerate(bytecode):
             if byte == 0x00:
@@ -166,11 +165,3 @@ class Tape:
         if self.position == len(self.data) - 1:
             self.data.append(0)
         self.position += 1
-
-vm = Vm()
-bc = bytearray(bytes((0x00, 0x00, 0x03, 0x04, 0x09, 0x0D)))
-command = bytearray(bytes((0x02, 0x00, 0x0D)))
-
-vm.run(bc, command)
-print(vm.stack)
-print(vm.tape.get())

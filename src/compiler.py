@@ -94,7 +94,3 @@ class Compiler:
     def handle_procedure_call(self, name: str):
         self.bytecode.append(0x0E)
         self.bytecode.append(self.procedures[name])
-
-
-c = Compiler()
-print(c.compile("ЭТО Программа ПИШИ ПРОБЕЛ КОНЕЦ ЭТО Другой ВПРАВО Программа КОНЕЦ"))
