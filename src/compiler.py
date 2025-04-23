@@ -52,6 +52,9 @@ class Compiler:
                         else:
                             raise CorrectorSyntaxError('Ожидался символ')
 
+        if self.states_stack:
+            raise CorrectorSyntaxError('Незавершённый блок!')
+
         self.compose()
         return self.bytecode
 
@@ -59,6 +62,7 @@ class Compiler:
         tag_id = len(self.procedures)
         self.procedures[name] = tag_id
         self.tags[tag_id] = bytearray()
+        self.states_stack.pop()  # Remove Procedure
         self.states_stack.append(StackElem.ProcedureName)
         self.tags_stack.append(tag_id)
 
