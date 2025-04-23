@@ -23,20 +23,26 @@ class Parser:
 
         self.line = self.row = 1
         self.cur_token = ''
+        self.in_comment = False
 
     def parse(self, code):
         for symbol in code.upper():
             if symbol.isspace():
-                if self.cur_token:
+                if self.cur_token and not self.in_comment:
                     yield self._get_tok()
                     self.cur_token = ''
                 if symbol == '\n':
                     self.row = 0
                     self.line += 1
+                    if self.in_comment:
+                        self.cur_token = ''
+                        self.in_comment = False
             else:
                 self.cur_token += symbol
+                if self.cur_token == '//':
+                    self.in_comment = True
             self.row += 1
-        if self.cur_token:
+        if self.cur_token and not self.in_comment:
             yield self._get_tok()
 
     def _get_tok(self) -> Token:
