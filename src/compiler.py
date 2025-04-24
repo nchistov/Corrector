@@ -34,10 +34,7 @@ class Compiler:
                     case stackelems.Procedure:
                         self.handle_procedure(tok)
                     case stackelems.WriteCommand:
-                        if tok.type == 'SYMBOL':
-                            self.handle_symbol(tok.value)
-                        else:
-                            raise CorrectorSyntaxError('Ожидался символ')
+                        self.handle_symbol(tok)
                     case stackelems.If:
                         self.handle_if(tok)
 
@@ -65,17 +62,7 @@ class Compiler:
             else:
                 raise CorrectorSyntaxError(f'Ожидалось имя процедуры, получено: {tok.type}')
         else:
-            if tok.type == 'KEYWORD':
-                match tok.value:
-                    case 'КОНЕЦ':
-                        self.handle_end()
-                    case 'ЕСЛИ':
-                        self.states_stack.append(stackelems.If(False, False, -1, False, -1, False, -1))
-            elif tok.type == "COMMAND":
-                self.handle_command(tok.value)
-            elif tok.type == "WORD":
-                if tok.value in self.procedures.keys():
-                    self.handle_procedure_call(tok.value)
+            self.handle_command(tok)
 
     def handle_if(self, tok):
         if self.states_stack[-1].tag == -1:
@@ -89,6 +76,7 @@ class Compiler:
                 elif tok.type == 'SYMBOL':
                     self.handle_symbol_check(tok.value)
                     self.states_stack[-1].symbol_check = True
+                    self.states_stack[-1].check = tok.value
             else:
                 if tok.value == 'ТО':
                     self.tags[self.tags_stack[-1]].extend((0x0E, len(self.tags)-1))
@@ -97,23 +85,47 @@ class Compiler:
                         self.tags[self.tags_stack[-1]].append(0x11)  # BOOL_NOT
                     self.states_stack[-1].tag = self.tags_stack[-1]
         else:
-            pass
+            if self.states_stack[-1].oneline_end:
+                self.handle_end()
+
+            self.states_stack[-1].oneline_end = True
+            self.handle_command(tok)
 
     def handle_end(self):
         self.tags[self.tags_stack.pop()].append(0x0D)
 
         self.states_stack.pop()
 
-    def handle_command(self, name):
-        if name == 'ПИШИ':
-            self.states_stack.append(stackelems.WriteCommand)
-        else:
-            self.tags[self.tags_stack[-1]].extend(self.commands[name])
+    def handle_command(self, tok):
+        if tok.type == 'KEYWORD':
+            match tok.value:
+                case 'КОНЕЦ':
+                    if stackelems.Procedure == self.states_stack[-1]:
+                        self.handle_end()
+                    else:
+                        raise CorrectorSyntaxError('Неожиданное ключевое слово КОНЕЦ')
+                case 'ЕСЛИ':
+                    self.states_stack.append(stackelems.If(False, False, -1, False, False, -1, False, -1))
+                case _:
+                    raise CorrectorSyntaxError(f'Неожиданное ключевое слово {tok.value}')
+        elif tok.type == "COMMAND":
+            if tok.value == 'ПИШИ':
+                self.states_stack.append(stackelems.WriteCommand)
+            else:
+                self.tags[self.tags_stack[-1]].extend(self.commands[tok.value])
+        elif tok.type == "WORD":
+            if tok.value in self.procedures.keys():
+                self.handle_procedure_call(tok.value)
+            else:
+                raise CorrectorSyntaxError(f'Не определена процедура с именем {tok.value}')
 
-    def handle_symbol(self, symbol):
-        self.tags[self.tags_stack[-1]].extend((0x03, symbol))
-        self.tags[self.tags_stack[-1]].append(0x09)
-        self.states_stack.pop()
+    def handle_symbol(self, tok):
+        if tok.type == 'SYMBOL':
+            self.tags[self.tags_stack[-1]].extend((0x03, tok.value))
+            self.tags[self.tags_stack[-1]].append(0x09)
+            self.states_stack.pop()
+        else:
+            raise CorrectorSyntaxError('Ожидался символ')
 
     def handle_procedure_call(self, name: str):
         self.tags[self.tags_stack[-1]].append(0x02)
@@ -135,6 +147,6 @@ class Compiler:
 
 if __name__ == '__main__':
     c = Compiler()
-    bc = c.compile('ЭТО Программа ПИШИ А КОНЕЦ')
+    bc = c.compile('ЭТО Программа ЕСЛИ А ТО ВЛЕВО КОНЕЦ')
     for i in bc:
         print(hex(i), end=' ')
