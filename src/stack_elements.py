@@ -1,6 +1,20 @@
-from enum import Enum, auto
+from dataclasses import dataclass
 
-class StackElem(Enum):
-    Procedure = auto()
-    ProcedureName = auto()
-    WriteCommand = auto()
+@dataclass
+class Procedure:
+    name: str
+    tag: int
+
+@dataclass
+class If:
+    no: bool
+    symbol_check: bool
+    check: int
+    multiline: bool
+    tag: int
+    else_check: bool
+    else_tag: int
+
+@dataclass
+class WriteCommand:
+    pass

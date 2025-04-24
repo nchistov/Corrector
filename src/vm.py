@@ -19,6 +19,7 @@ TAG <id> | 0x00 <id> -- начало тега
 0x0E <tag> -- POP_JUMP_IF <tag>
 0x0F <tag> <tag> -- POP_JUMP_IF_ELSE <tag> <tag>
 0x10 -- END
+0x11 -- BOOL_NOT
 ...
 
 Проверки:
@@ -69,7 +70,8 @@ class Vm:
                            0x0D: self._pop_jump,
                            0x0E: self._pop_jump_if,
                            0x0F: self._pop_jump_if_else,
-                           0x10: self._end
+                           0x10: self._end,
+                           0x11: self._bool_not,
                            }
 
     def run(self, bytecode: bytearray, command: bytearray):
@@ -170,6 +172,9 @@ class Vm:
 
     def _end(self, *args):
         self.running = False
+
+    def _bool_not(self, *args):
+        self.stack.append(not self.stack.pop())
 
     def _jump(self, tag_id: int, position: int):
         self.stack.append(position)
