@@ -15,12 +15,17 @@ class If(StackElem):
     no: bool
     symbol_check: bool
     check: int
-    multiline: bool
-    oneline_end: bool
     tag: int
+    code_block: bool
     else_check: bool
     else_tag: int
 
-@dataclass
+@dataclass(eq=False)
 class WriteCommand(StackElem):
-    pass
+    tag: int
+
+@dataclass(eq=False)
+class CodeBlock(StackElem):
+    started: bool
+    multiline: bool
+    tag: int

@@ -9,8 +9,7 @@ class Compiler:
 
         self.procedures = {}
         self.tags = []
-        self.tags_stack = []
-        self.states_stack = []
+        self.stack = []
 
         self.commands = {
             'ВПРАВО': (0x05,), 'ВЛЕВО': (0x06,), 'ЯЩИК+': (0x0A, 0x07),
@@ -24,25 +23,30 @@ class Compiler:
 
     def compile(self, code):
         for tok in self.parser.parse(code):
-            if not self.states_stack:
-                if tok.type == 'KEYWORD' and tok.value == 'ЭТО':
-                    self.states_stack.append(stackelems.Procedure('', -1))
-                else:
-                    raise CorrectorSyntaxError('На внешнем уровне программы не должно быть команд')
-            else:
-                match self.states_stack[-1]:
-                    case stackelems.Procedure:
-                        self.handle_procedure(tok)
-                    case stackelems.WriteCommand:
-                        self.handle_symbol(tok)
-                    case stackelems.If:
-                        self.handle_if(tok)
+            self.handle(tok)
 
-        if self.states_stack:
+        if self.stack:
             raise CorrectorSyntaxError('Незавершённый блок!')
 
         self.compose()
         return self.bytecode
+
+    def handle(self, tok):
+        if not self.stack:
+            if tok.type == 'KEYWORD' and tok.value == 'ЭТО':
+                self.stack.append(stackelems.Procedure('', -1))
+            else:
+                raise CorrectorSyntaxError('На внешнем уровне программы не должно быть команд')
+        else:
+            match self.stack[-1]:
+                case stackelems.Procedure:
+                    self.handle_procedure(tok)
+                case stackelems.WriteCommand:
+                    self.handle_symbol(tok)
+                case stackelems.If:
+                    self.handle_if(tok)
+                case stackelems.CodeBlock:
+                    self.handle_code_block(tok)
 
     def _add_tag(self, name: str = None) -> int:
         tag_id = len(self.procedures)
@@ -53,92 +57,107 @@ class Compiler:
         return tag_id
 
     def handle_procedure(self, tok):
-        if not self.states_stack[-1].name:
+        if not self.stack[-1].name:
             if tok.type == 'WORD':
-                self.states_stack[-1].name = tok.value
+                self.stack[-1].name = tok.value
                 tag = self._add_tag(tok.value)
-                self.tags_stack.append(tag)
-                self.states_stack[-1].tag = tag
+                self.stack[-1].tag = tag
             else:
                 raise CorrectorSyntaxError(f'Ожидалось имя процедуры, получено: {tok.type}')
         else:
             self.handle_command(tok)
 
     def handle_if(self, tok):
-        if self.states_stack[-1].tag == -1:
-            if self.states_stack[-1].check == -1:
-                if not self.states_stack[-1].no:
+        if not self.stack[-1].code_block:
+            if self.stack[-1].check == -1:
+                if not self.stack[-1].no:
                     if tok.value == 'НЕ':
-                        self.states_stack[-1].no = True
+                        self.stack[-1].no = True
                 if tok.type == 'CHECK':
                     self.handle_check(tok.value)
-                    self.states_stack[-1].check = tok.value
+                    self.stack[-1].check = tok.value
                 elif tok.type == 'SYMBOL':
                     self.handle_symbol_check(tok.value)
-                    self.states_stack[-1].symbol_check = True
-                    self.states_stack[-1].check = tok.value
+                    self.stack[-1].symbol_check = True
+                    self.stack[-1].check = tok.value
             else:
                 if tok.value == 'ТО':
-                    self.tags[self.tags_stack[-1]].extend((0x0E, len(self.tags)-1))
-                    self.tags_stack.append(len(self.tags)-1)
-                    if self.states_stack[-1].no:
-                        self.tags[self.tags_stack[-1]].append(0x11)  # BOOL_NOT
-                    self.states_stack[-1].tag = self.tags_stack[-1]
+                    self._add_tag()
+                    if self.stack[-1].no:
+                        self.tags[self.stack[-1].tag].append(0x11)  # BOOL_NOT
+                    self.tags[self.stack[-1].tag].extend((0x0E, len(self.tags) - 1))
+                    self.stack[-1].tag = len(self.tags) - 1
+                    self.stack[-1].code_block = True
+                    self.stack.append(stackelems.CodeBlock(False, False, self.stack[-1].tag))
         else:
-            if self.states_stack[-1].oneline_end:
-                self.handle_end()
-
-            self.states_stack[-1].oneline_end = True
-            self.handle_command(tok)
+            self.stack.pop()
+            self.handle(tok)
 
     def handle_end(self):
-        self.tags[self.tags_stack.pop()].append(0x0D)
-
-        self.states_stack.pop()
+        self.tags[self.stack.pop().tag].append(0x0D)
 
     def handle_command(self, tok):
         if tok.type == 'KEYWORD':
             match tok.value:
                 case 'КОНЕЦ':
-                    if stackelems.Procedure == self.states_stack[-1]:
+                    if self.stack[-1] == stackelems.Procedure:
                         self.handle_end()
                     else:
                         raise CorrectorSyntaxError('Неожиданное ключевое слово КОНЕЦ')
                 case 'ЕСЛИ':
-                    self.states_stack.append(stackelems.If(False, False, -1, False, False, -1, False, -1))
+                    self.stack.append(stackelems.If(False, False, -1, self.stack[-1].tag, False, False, -1))
                 case _:
                     raise CorrectorSyntaxError(f'Неожиданное ключевое слово {tok.value}')
         elif tok.type == "COMMAND":
             if tok.value == 'ПИШИ':
-                self.states_stack.append(stackelems.WriteCommand)
+                self.stack.append(stackelems.WriteCommand(self.stack[-1].tag))
             else:
-                self.tags[self.tags_stack[-1]].extend(self.commands[tok.value])
+                self.tags[self.stack[-1].tag].extend(self.commands[tok.value])
         elif tok.type == "WORD":
             if tok.value in self.procedures.keys():
                 self.handle_procedure_call(tok.value)
             else:
                 raise CorrectorSyntaxError(f'Не определена процедура с именем {tok.value}')
 
+    def handle_code_block(self, tok):
+        if not self.stack[-1].started:
+            if tok.type in ('COMMAND', 'WORD'):
+                self.handle_command(tok)
+            elif tok.type == 'SYMBOL' and tok.value == 56:  # {
+                self.stack[-1].multiline = True
+            else:
+                raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}')
+            self.stack[-1].started = True
+        else:
+            if self.stack[-1].multiline:
+                if tok.type in ('COMMAND', 'WORD'):
+                    self.handle_command(tok)
+                elif tok.type == 'SYMBOL' and tok.value == 57:  # }
+                    self.handle_end()
+                else:
+                    raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}')
+            else:
+                self.handle_end()
+                self.handle(tok)
+
     def handle_symbol(self, tok):
         if tok.type == 'SYMBOL':
-            self.tags[self.tags_stack[-1]].extend((0x03, tok.value))
-            self.tags[self.tags_stack[-1]].append(0x09)
-            self.states_stack.pop()
+            self.tags[self.stack[-1].tag].extend((0x03, tok.value))
+            self.tags[self.stack[-1].tag].append(0x09)
+            self.stack.pop()
         else:
             raise CorrectorSyntaxError('Ожидался символ')
 
     def handle_procedure_call(self, name: str):
-        self.tags[self.tags_stack[-1]].append(0x02)
-        self.tags[self.tags_stack[-1]].append(self.procedures[name])
-        self.tags[self.tags_stack[-1]].append(0x0D)
+        self.tags[self.stack[-1].tag].append(0x02)
+        self.tags[self.stack[-1].tag].append(self.procedures[name])
+        self.tags[self.stack[-1].tag].append(0x0D)
 
     def handle_check(self, name):
-        self.tags[self.tags_stack[-1]].extend(self.checks[name])
-        self._add_tag()
+        self.tags[self.stack[-1].tag].extend(self.checks[name])
 
     def handle_symbol_check(self, symbol):
-        self.tags[self.tags_stack[-1]].extend((0x03, symbol, 0x0A, 0x04, 0x01))
-        self._add_tag()
+        self.tags[self.stack[-1].tag].extend((0x03, symbol, 0x0A, 0x04, 0x01))
 
     def compose(self):
         for tag_id, tag_bytecode in enumerate(self.tags):
@@ -147,6 +166,6 @@ class Compiler:
 
 if __name__ == '__main__':
     c = Compiler()
-    bc = c.compile('ЭТО Программа ЕСЛИ А ТО ВЛЕВО КОНЕЦ')
+    bc = c.compile('ЭТО Программа ЕСЛИ НЕ А ТО ВЛЕВО КОНЕЦ')
     for i in bc:
         print(hex(i), end=' ')
