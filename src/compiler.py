@@ -82,13 +82,11 @@ class Compiler:
                     self.stack[-1].check = tok.value
             else:
                 if tok.value == 'ТО':
-                    self._add_tag()
                     if self.stack[-1].no:
                         self.tags[self.stack[-1].tag].append(0x11)  # BOOL_NOT
-                    self.tags[self.stack[-1].tag].extend((0x0E, len(self.tags) - 1))
-                    self.stack[-1].tag = len(self.tags) - 1
+                    self.tags[self.stack[-1].tag].extend((0x0E, len(self.tags)))  # len(self.tags), but not - 1 -- new tag.
                     self.stack[-1].code_block = True
-                    self.stack.append(stackelems.CodeBlock(False, False, self.stack[-1].tag))
+                    self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
         else:
             self.stack.pop()
             self.handle(tok)
