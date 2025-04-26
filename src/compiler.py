@@ -49,7 +49,7 @@ class Compiler:
                     self.handle_code_block(tok, self.stack[-1])
 
     def _add_tag(self, name: str = None) -> int:
-        tag_id = len(self.procedures)
+        tag_id = len(self.tags)
         if name:
             self.procedures[name] = tag_id
         self.tags.append(bytearray())
@@ -91,8 +91,19 @@ class Compiler:
                     state.code_block = True
                     self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
         else:
-            self.stack.pop()
-            self.handle(tok)
+            if tok.value == 'ИНАЧЕ':
+                if not state.else_check:
+                    if_tag = self.tags[state.tag][-1]  # Last element of a bytecode
+                    else_tag = self._add_tag()
+                    self.tags[state.tag] = self.tags[state.tag][:-2]  # Removing POP_JUMP_IF <tag>
+                    self.tags[state.tag].extend((0x0F, if_tag, else_tag))  # POP_JUMP_IF_ELSE <if_tag> <else_tag>
+                    self.stack.append(stackelems.CodeBlock(False, False, else_tag))
+                    state.else_check = True
+                else:
+                    raise CorrectorSyntaxError('Недопустимые два блока ИНАЧЕ')
+            else:
+                self.stack.pop()
+                self.handle(tok)
 
     def handle_command(self, tok, state):
         if tok.type == 'KEYWORD':
@@ -103,7 +114,7 @@ class Compiler:
                     else:
                         raise CorrectorSyntaxError('Неожиданное ключевое слово КОНЕЦ')
                 case 'ЕСЛИ':
-                    self.stack.append(stackelems.If(False, False, -1, state.tag, False, False, -1))
+                    self.stack.append(stackelems.If(False, False, -1, state.tag, False, False))
                 case _:
                     raise CorrectorSyntaxError(f'Неожиданное ключевое слово {tok.value}')
         elif tok.type == "COMMAND":
@@ -164,6 +175,17 @@ class Compiler:
 
 if __name__ == '__main__':
     c = Compiler()
-    bc = c.compile('ЭТО Программа ЕСЛИ НЕ А ТО ВЛЕВО КОНЕЦ')
+
+    code = '''ЭТО Программа
+      ЕСЛИ НЕ А ТО {
+        ВЛЕВО
+        ОБМЕН
+      } ИНАЧЕ
+        ВЛЕВО
+      ВПРАВО
+    КОНЕЦ
+    '''
+
+    bc = c.compile(code)
     for i in bc:
         print(hex(i), end=' ')

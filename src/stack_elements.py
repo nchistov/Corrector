@@ -18,7 +18,6 @@ class If(StackElem):
     tag: int
     code_block: bool
     else_check: bool
-    else_tag: int
 
 @dataclass(eq=False)
 class WriteCommand(StackElem):
