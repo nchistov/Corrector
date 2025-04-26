@@ -76,16 +76,7 @@ class Compiler:
     def handle_if(self, tok, state):
         if not state.code_block:
             if state.check == -1:
-                if not state.no:
-                    if tok.value == 'НЕ':
-                        state.no = True
-                if tok.type == 'CHECK':
-                    self.handle_check(tok.value)
-                    state.check = tok.value
-                elif tok.type == 'SYMBOL':
-                    self.handle_symbol_check(tok.value)
-                    state.symbol_check = True
-                    state.check = tok.value
+                self.handle_check(tok, state)
             else:
                 if tok.value == 'ТО':
                     if state.no:
@@ -175,6 +166,18 @@ class Compiler:
                 self.handle_end()
                 self.handle(tok)
 
+    def handle_check(self, tok, state):
+        if not state.no:
+            if tok.value == 'НЕ':
+                state.no = True
+        if tok.type == 'CHECK':
+            self.tags[self.stack[-1].tag].extend(self.checks[tok.value])
+            state.check = tok.value
+        elif tok.type == 'SYMBOL':
+            self.tags[self.stack[-1].tag].extend((0x03, tok.value, 0x0A, 0x04, 0x01))
+            state.symbol_check = True
+            state.check = tok.value
+
     def handle_symbol(self, tok, state):
         if tok.type == 'SYMBOL':
             self.tags[state.tag].extend((0x03, tok.value))
@@ -187,12 +190,6 @@ class Compiler:
         self.tags[self.stack[-1].tag].append(0x02)
         self.tags[self.stack[-1].tag].append(self.procedures[name])
         self.tags[self.stack[-1].tag].append(0x0D)
-
-    def handle_check(self, name):
-        self.tags[self.stack[-1].tag].extend(self.checks[name])
-
-    def handle_symbol_check(self, symbol):
-        self.tags[self.stack[-1].tag].extend((0x03, symbol, 0x0A, 0x04, 0x01))
 
     def compose(self):
         for tag_id, tag_bytecode in enumerate(self.tags):
