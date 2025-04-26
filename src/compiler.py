@@ -46,6 +46,8 @@ class Compiler:
                     self.handle_symbol(tok, self.stack[-1])
                 case stackelems.If:
                     self.handle_if(tok, self.stack[-1])
+                case stackelems.ForLoop:
+                    self.handle_for(tok, self.stack[-1])
                 case stackelems.CodeBlock:
                     self.handle_code_block(tok, self.stack[-1])
 
@@ -106,6 +108,27 @@ class Compiler:
                 self.stack.pop()
                 self.handle(tok)
 
+    def handle_for(self, tok, state):
+        if state.iterations == -1:
+            if tok.type == 'SYMBOL':
+                if 1 < tok.value < 11:  # No 0 iterations!
+                    state.iterations = tok.value - 1
+                else:
+                    raise CorrectorSyntaxError('Ожидалось кол-во повторений')
+            elif tok.type == 'NUMBER':
+                state.iterations = tok.value
+            else:
+                raise CorrectorSyntaxError('Ожидалось кол-во повторений')
+
+            tag = self._add_tag()
+            self.tags[state.tag].extend((0x02, tag, 0x0D))
+            self.stack.append(stackelems.CodeBlock(False, False, tag))
+        else:
+            self.tags[-1] = self.tags[-1][:-1] * state.iterations  # Remove POP_JUMP and multiply bytecode
+            self.tags[-1].append(0x0D)  # and add POP_JUMP after multiplying
+            self.stack.pop()
+            self.handle(tok)
+
     def handle_command(self, tok, state):
         if tok.type == 'KEYWORD':
             match tok.value:
@@ -116,6 +139,8 @@ class Compiler:
                         raise CorrectorSyntaxError('Неожиданное ключевое слово КОНЕЦ')
                 case 'ЕСЛИ':
                     self.stack.append(stackelems.If(False, False, -1, state.tag, False, False))
+                case 'ПОВТОРИ':
+                    self.stack.append(stackelems.ForLoop(state.tag, -1))
                 case _:
                     raise CorrectorSyntaxError(f'Неожиданное ключевое слово {tok.value}')
         elif tok.type == "COMMAND":
@@ -178,12 +203,7 @@ if __name__ == '__main__':
     c = Compiler()
 
     code = '''ЭТО Программа
-      ЕСЛИ НЕ ЦИФРА ТО {
-        ВЛЕВО
-        ОБМЕН
-      } ИНАЧЕ
-        ВЛЕВО
-      ВПРАВО
+      ПОВТОРИ 5 ВПРАВО
     КОНЕЦ
     '''
 

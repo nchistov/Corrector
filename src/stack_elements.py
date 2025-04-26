@@ -20,6 +20,11 @@ class If(StackElem):
     else_check: bool
 
 @dataclass(eq=False)
+class ForLoop(StackElem):
+    tag: int
+    iterations: int
+
+@dataclass(eq=False)
 class WriteCommand(StackElem):
     tag: int
 
