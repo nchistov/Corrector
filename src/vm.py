@@ -20,6 +20,7 @@ TAG <id> | 0x00 <id> -- начало тега
 0x0F <tag> <tag> -- POP_JUMP_IF_ELSE <tag> <tag>
 0x10 -- END
 0x11 -- BOOL_NOT
+0x12 -- IS_DIGIT
 ...
 
 Проверки:
@@ -72,6 +73,7 @@ class Vm:
                            0x0F: self._pop_jump_if_else,
                            0x10: self._end,
                            0x11: self._bool_not,
+                           0x12: self._is_digit,
                            }
 
     def run(self, bytecode: bytearray, command: bytearray):
@@ -175,6 +177,9 @@ class Vm:
 
     def _bool_not(self, *args):
         self.stack.append(not self.stack.pop())
+
+    def _is_digit(self, *args):
+        self.stack.append(0 < self.stack.pop() < 11)  # 0 or 1, 2, 3, 4, 5...
 
     def _jump(self, tag_id: int, position: int):
         self.stack.append(position)
