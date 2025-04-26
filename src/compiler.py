@@ -1,6 +1,7 @@
 from parser import Parser
 from errors import CorrectorSyntaxError
 import stack_elements as stackelems
+from src.vm import Vm
 
 
 class Compiler:
@@ -48,6 +49,8 @@ class Compiler:
                     self.handle_if(tok, self.stack[-1])
                 case stackelems.ForLoop:
                     self.handle_for(tok, self.stack[-1])
+                case stackelems.WhileLoop:
+                    self.handle_while(tok, self.stack[-1])
                 case stackelems.CodeBlock:
                     self.handle_code_block(tok, self.stack[-1])
 
@@ -99,6 +102,34 @@ class Compiler:
                 self.stack.pop()
                 self.handle(tok)
 
+    def handle_while(self, tok, state):
+        # LOAD_TAG 1
+        # POP_JUMP
+        # TAG 1
+        # <CHECK> THEN JUMP 2
+        # POP_JUMP
+        # TAG 2
+        # <BODY>
+        # JUMP 1
+        if not state.code_block:
+            if state.check == -1:
+                if not state.no:  # On start
+                    self.tags[state.tag].extend((0x02, len(self.tags), 0x0D))
+                    state.tag = self._add_tag()
+                self.handle_check(tok, state)
+            else:
+                if state.no:
+                    self.tags[state.tag].append(0x11)  # BOOL_NOT
+                self.tags[state.tag].extend((0x0E, len(self.tags)))  # len(self.tags), but not - 1 -- new tag.
+                state.code_block = True
+                self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
+                self.handle(tok)
+        else:
+            self.tags[-1] = self.tags[-1][:-1]  # Removing ending POP_JUMP
+            self.tags[-1].extend((0x02, state.tag, 0x0D, 0x0D))  # Double POP_JUMP: first for while jump, second -- end of block
+            self.handle_end()
+            self.handle(tok)
+
     def handle_for(self, tok, state):
         if state.iterations == -1:
             if tok.type == 'SYMBOL':
@@ -132,6 +163,8 @@ class Compiler:
                     self.stack.append(stackelems.If(False, False, -1, state.tag, False, False))
                 case 'ПОВТОРИ':
                     self.stack.append(stackelems.ForLoop(state.tag, -1))
+                case 'ПОКА':
+                    self.stack.append(stackelems.WhileLoop(False, False, -1, state.tag, False))
                 case _:
                     raise CorrectorSyntaxError(f'Неожиданное ключевое слово {tok.value}')
         elif tok.type == "COMMAND":
@@ -171,10 +204,10 @@ class Compiler:
             if tok.value == 'НЕ':
                 state.no = True
         if tok.type == 'CHECK':
-            self.tags[self.stack[-1].tag].extend(self.checks[tok.value])
+            self.tags[state.tag].extend(self.checks[tok.value])
             state.check = tok.value
         elif tok.type == 'SYMBOL':
-            self.tags[self.stack[-1].tag].extend((0x03, tok.value, 0x0A, 0x04, 0x01))
+            self.tags[state.tag].extend((0x03, tok.value, 0x0A, 0x04, 0x01))
             state.symbol_check = True
             state.check = tok.value
 
@@ -200,10 +233,11 @@ if __name__ == '__main__':
     c = Compiler()
 
     code = '''ЭТО Программа
-      ПОВТОРИ 5 ВПРАВО
+      ПОКА А ВПРАВО
     КОНЕЦ
     '''
 
     bc = c.compile(code)
-    for i in bc:
-        print(hex(i), end=' ')
+    v = Vm()
+    print(*[hex(a) for a in bc], sep=' ')
+    v.run(bc, bytearray((0x02, 0x00, 0x0D, 0x10)))

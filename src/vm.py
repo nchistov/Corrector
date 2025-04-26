@@ -165,6 +165,8 @@ class Vm:
     def _pop_jump_if(self, *args):
         if self.stack.pop():
             self._jump(args[0], self.position + len(args) + 1)
+        else:
+            self.position += 2
 
     def _pop_jump_if_else(self, *args):
         if self.stack.pop():

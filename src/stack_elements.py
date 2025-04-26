@@ -25,6 +25,14 @@ class ForLoop(StackElem):
     iterations: int
 
 @dataclass(eq=False)
+class WhileLoop(StackElem):
+    no: bool
+    symbol_check: bool
+    check: int
+    tag: int
+    code_block: bool
+
+@dataclass(eq=False)
 class WriteCommand(StackElem):
     tag: int
 
