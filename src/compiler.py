@@ -1,7 +1,6 @@
-from parser import Parser
-from errors import CorrectorSyntaxError
-import stack_elements as stackelems
-from src.vm import Vm
+from .parser import Parser
+from .errors import CorrectorSyntaxError
+from . import stack_elements as stackelems
 
 
 class Compiler:
@@ -228,16 +227,3 @@ class Compiler:
         for tag_id, tag_bytecode in enumerate(self.tags):
             self.bytecode.extend((0x00, tag_id))
             self.bytecode.extend(tag_bytecode)
-
-if __name__ == '__main__':
-    c = Compiler()
-
-    code = '''ЭТО Программа
-      ПОКА А ВПРАВО
-    КОНЕЦ
-    '''
-
-    bc = c.compile(code)
-    v = Vm()
-    print(*[hex(a) for a in bc], sep=' ')
-    v.run(bc, bytearray((0x02, 0x00, 0x0D, 0x10)))

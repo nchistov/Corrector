@@ -33,7 +33,7 @@ TAG <id> | 0x00 <id> -- начало тега
 """
 from enum import Enum
 
-from src import errors
+from . import errors
 
 
 class WaitingFor(Enum):

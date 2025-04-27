@@ -1,6 +1,6 @@
 from typing import NamedTuple
 
-from errors import CorrectorParserError
+from .errors import CorrectorParserError
 
 class Token(NamedTuple):
     type:   str
@@ -32,7 +32,7 @@ class Parser:
                     yield self._get_tok()
                     self.cur_token = ''
                 if symbol == '\n':
-                    self.row = 0
+                    self.row = 1
                     self.line += 1
                     if self.in_comment:
                         self.cur_token = ''
