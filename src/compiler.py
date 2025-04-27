@@ -182,7 +182,7 @@ class Compiler:
         if not state.started:
             if tok.type in ('COMMAND', 'WORD'):
                 self.handle_command(tok, state)
-            elif tok.type == 'SYMBOL' and tok.value == 56:  # {
+            elif tok.type == 'SYMBOL' and tok.value == 57:  # {
                 state.multiline = True
             else:
                 raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}')
@@ -191,7 +191,7 @@ class Compiler:
             if state.multiline:
                 if tok.type in ('COMMAND', 'WORD'):
                     self.handle_command(tok, state)
-                elif tok.type == 'SYMBOL' and tok.value == 57:  # }
+                elif tok.type == 'SYMBOL' and tok.value == 58:  # }
                     self.handle_end()
                 else:
                     raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}')

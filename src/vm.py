@@ -146,13 +146,13 @@ class Vm:
 
     def _pop_next_push(self, *args):
         s = self.stack.pop()
-        if s == 71:
+        if s == 72:
             raise errors.CorrectorCannotError('Не могу!')
         self.stack.append(s + 1)
 
     def _pop_prev_push(self, *args):
         s = self.stack.pop()
-        if s == 0:
+        if s == 1:
             raise errors.CorrectorCannotError('Не могу!')
         self.stack.append(s - 1)
 
@@ -181,7 +181,7 @@ class Vm:
         self.stack.append(not self.stack.pop())
 
     def _is_digit(self, *args):
-        self.stack.append(0 < self.stack.pop() < 11)  # 0 or 1, 2, 3, 4, 5...
+        self.stack.append(1 < self.stack.pop() < 12)  # 0 or 1, 2, 3, 4, 5...
 
     def _jump(self, tag_id: int, position: int):
         self.stack.append(position)
