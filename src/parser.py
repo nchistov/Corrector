@@ -25,7 +25,14 @@ class Parser:
         self.cur_token = ''
         self.in_comment = False
 
+    def reset(self):
+        self.line = self.row = 1
+        self.cur_token = ''
+        self.in_comment = False
+
     def parse(self, code):
+        self.reset()
+
         for symbol in code.upper():
             if symbol.isspace():
                 if self.cur_token and not self.in_comment:

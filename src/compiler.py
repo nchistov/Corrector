@@ -22,7 +22,16 @@ class Compiler:
 
         self.parser = Parser()
 
+    def startup(self):
+        # Reset
+        self.bytecode = bytearray()
+        self.procedures = {}
+        self.tags = []
+        self.stack = []
+
     def compile(self, code):
+        self.startup()
+
         for tok in self.parser.parse(code):
             self.handle(tok)
 
@@ -102,14 +111,6 @@ class Compiler:
                 self.handle(tok)
 
     def handle_while(self, tok, state):
-        # LOAD_TAG 1
-        # POP_JUMP
-        # TAG 1
-        # <CHECK> THEN JUMP 2
-        # POP_JUMP
-        # TAG 2
-        # <BODY>
-        # JUMP 1
         if not state.code_block:
             if state.check == -1:
                 if not state.no:  # On start
