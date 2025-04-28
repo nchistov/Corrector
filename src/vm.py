@@ -191,22 +191,34 @@ class Vm:
 class Tape:
     """Рабочая лента исполнителя"""
     def __init__(self):
-        self.data = [0]
+        self.left_data = []
+        self.right_data = [1]
         self.position = 0
 
     def set(self, symbol: int):
-        self.data[self.position] = symbol
+        if self.position >= 0:
+            self.right_data[self.position] = symbol
+        else:
+            self.left_data[-self.position-1] = symbol
 
     def get(self) -> int:
-        return self.data[self.position]
+        return self.right_data[self.position] if self.position >= 0 else self.left_data[-self.position-1]
 
     def move_left(self):
-        if self.position == 0:
-            self.data.insert(0, 0)
-        else:
-            self.position -= 1
+        if self.position < 0  and -self.position == len(self.left_data):
+            self.left_data.append(1)
+        self.position -= 1
 
     def move_right(self):
-        if self.position == len(self.data) - 1:
-            self.data.append(0)
+        if self.position == len(self.right_data) - 1:
+            self.right_data.append(1)
         self.position += 1
+
+    def get_preview(self):
+        for pos in range(self.position-5, self.position+6):
+            if pos < 0  and -pos > len(self.left_data):
+                yield 1
+            elif pos > 0 and pos > len(self.right_data) - 1:
+                yield 1
+            else:
+                yield self.right_data[pos] if pos >= 0 else self.left_data[-pos+1]
