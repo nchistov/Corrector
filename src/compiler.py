@@ -22,15 +22,29 @@ class Compiler:
 
         self.parser = Parser()
 
-    def startup(self):
+    def startup(self, code):
         # Reset
         self.bytecode = bytearray()
         self.procedures = {}
         self.tags = []
         self.stack = []
 
+        tokens = self.parser.parse(code)
+
+        try:
+            while True:
+                tok = next(tokens)
+                if tok.value == 'ЭТО':
+                    tok = next(tokens)
+                    if tok.type == 'WORD':
+                        self._add_tag(tok.value)
+                    else:
+                        raise CorrectorSyntaxError('Ожидалось имя процедуры')
+        except StopIteration:
+            return
+
     def compile(self, code):
-        self.startup()
+        self.startup(code)
 
         for tok in self.parser.parse(code):
             self.handle(tok)
@@ -77,10 +91,9 @@ class Compiler:
         if not state.name:
             if tok.type == 'WORD':
                 state.name = tok.value
-                tag = self._add_tag(tok.value)
-                state.tag = tag
+                state.tag = self.procedures[state.name]
             else:
-                raise CorrectorSyntaxError(f'Ожидалось имя процедуры, получено: {tok.type}')
+                raise CorrectorSyntaxError('Ожидалось имя процедуры')
         else:
             self.handle_command(tok, state)
 
