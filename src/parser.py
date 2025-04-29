@@ -1,7 +1,5 @@
 from typing import NamedTuple
 
-from .errors import CorrectorParserError
-
 class Token(NamedTuple):
     type:   str
     value:  str | int
