@@ -62,8 +62,6 @@ class Parser:
         elif self.cur_token in self.checks:
             return Token('CHECK', self.cur_token, self.line, self.row)
         elif self.cur_token.isdigit():
-            if int(self.cur_token) >= 256:
-                raise CorrectorParserError('')
             return Token('NUMBER', int(self.cur_token), self.line, self.row)
         else:
             return Token('WORD', self.cur_token, self.line, self.row)
