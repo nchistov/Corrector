@@ -36,7 +36,7 @@ class Compiler:
                 tok = next(tokens)
                 if tok.value == 'ЭТО':
                     tok = next(tokens)
-                    if tok.type == 'WORD':
+                    if tok.type == 'WORD' or tok.type == 'SYMBOL':
                         self._add_tag(tok.value)
                     else:
                         raise CorrectorSyntaxError('Ожидалось имя процедуры')
@@ -89,7 +89,7 @@ class Compiler:
 
     def handle_procedure(self, tok, state):
         if not state.name:
-            if tok.type == 'WORD':
+            if tok.type == 'WORD' or tok.type == 'SYMBOL':
                 state.name = tok.value
                 state.tag = self.procedures[state.name]
             else:

@@ -8,6 +8,12 @@ def test_simple_procedure():
     bc = c.compile(code)
     assert bc == bytearray((0x00, 0x00, 0x0D))
 
+def test_symbol_procedure_name():
+    code = 'ЭТО А СТОЯТЬ КОНЕЦ'
+    bc = c.compile(code)
+
+    assert bc == bytearray((0x00, 0x00, 0x0D))
+
 def test_commands():
     code = 'ЭТО Процедура ВПРАВО ВЛЕВО ПЛЮС МИНУС КОНЕЦ'
 
