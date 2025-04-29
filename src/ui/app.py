@@ -1,5 +1,7 @@
 from PySide6 import QtWidgets
 
+from tape_widget import TapeWidget
+
 
 class Window(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -23,14 +25,17 @@ class Window(QtWidgets.QWidget):
         self.alphabet_box = QtWidgets.QVBoxLayout()
         self.alphabet_group = QtWidgets.QGroupBox('АЛФАВИТ')
 
+        self.tape = TapeWidget()
+
         for lbl in self.alphabet_labels:
             self.alphabet_box.addWidget(lbl)
         self.alphabet_group.setLayout(self.alphabet_box)
 
-        self.grid.addWidget(self.code_input, 0, 1, 2, 3)
-        self.grid.addWidget(self.reset_button, 2, 1)
-        self.grid.addWidget(self.go_button, 2, 2)
-        self.grid.addWidget(self.commands_input, 2, 3)
-        self.grid.addWidget(self.alphabet_group, 1, 0, 2, 1)
+        self.grid.addWidget(self.code_input, 0, 1, 3, 3)
+        self.grid.addWidget(self.reset_button, 3, 1)
+        self.grid.addWidget(self.go_button, 3, 2)
+        self.grid.addWidget(self.commands_input, 3, 3)
+        self.grid.addWidget(self.alphabet_group, 2, 0, 2, 1)
+        self.grid.addWidget(self.tape, 1, 0)
 
         self.setLayout(self.grid)
