@@ -1,7 +1,7 @@
 from .parser import Parser
 from ..errors import CorrectorSyntaxError
 from . import stack_elements as stackelems
-from ..bytecode import ByteCommand as bc, BinOp as bo
+from .. import bytecode as bc
 
 
 class Compiler:
@@ -19,10 +19,10 @@ class Compiler:
             'ПЛЮС': (bc.LOAD_TAPE, bc.POP_NEXT_PUSH, bc.POP_SET_TAPE),
             'МИНУС': (bc.LOAD_TAPE, bc.POP_PREV_PUSH, bc.POP_SET_TAPE), 'СТОЯТЬ': ()
         }
-        self.checks = {'Я=Л': (bc.LOAD_TAPE, bc.LOAD_BOX, bc.BIN_OP, bo.EQUAL),
-                       'Я>Л': (bc.LOAD_TAPE, bc.LOAD_BOX, bc.BIN_OP, bo.MORE),
-                       'Я<Л': (bc.LOAD_TAPE, bc.LOAD_BOX, bc.BIN_OP, bo.LESS),
-                       'Я#Л': (bc.LOAD_TAPE, bc.LOAD_BOX, bc.BIN_OP, bo.NOT_EQUAL),
+        self.checks = {'Я=Л': (bc.LOAD_TAPE, bc.LOAD_BOX, bc.BIN_OP, bc.EQUAL),
+                       'Я>Л': (bc.LOAD_TAPE, bc.LOAD_BOX, bc.BIN_OP, bc.MORE),
+                       'Я<Л': (bc.LOAD_TAPE, bc.LOAD_BOX, bc.BIN_OP, bc.LESS),
+                       'Я#Л': (bc.LOAD_TAPE, bc.LOAD_BOX, bc.BIN_OP, bc.NOT_EQUAL),
                        'ЦИФРА': (bc.LOAD_TAPE, bc.IS_DIGIT)}
 
         self.parser = Parser()
@@ -225,7 +225,7 @@ class Compiler:
             self.tags[state.tag].extend(self.checks[tok.value])
             state.check = tok.value
         elif tok.type == 'SYMBOL':
-            self.tags[state.tag].extend((bc.LOAD_SYMBOL, tok.value, bc.LOAD_TAPE, bc.BIN_OP, bo.EQUAL))
+            self.tags[state.tag].extend((bc.LOAD_SYMBOL, tok.value, bc.LOAD_TAPE, bc.BIN_OP, bc.EQUAL))
             state.symbol_check = True
             state.check = tok.value
 

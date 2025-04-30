@@ -22,18 +22,7 @@ TAG <id> | 0x00 <id> -- начало тега
 0x11 -- BOOL_NOT
 0x12 -- IS_DIGIT
 """
-from enum import Enum
-
 from .. import errors
-
-
-class WaitingFor(Enum):
-    Procedure = 0
-    ProcedureId = 1
-    Command = 2
-    Symbol = 3
-    Check = 4
-    Number = 5
 
 
 class Vm:
@@ -44,9 +33,7 @@ class Vm:
         self.stack = []
 
         self.tags = {}
-        self.state = WaitingFor.Procedure
         self.position = 0
-        self.running = False
 
         self.operations = {0x02: self._load_tag,
                            0x03: self._load_symbol,
@@ -62,7 +49,6 @@ class Vm:
                            0x0D: self._pop_jump,
                            0x0E: self._pop_jump_if,
                            0x0F: self._pop_jump_if_else,
-                           0x10: self._end,
                            0x11: self._bool_not,
                            0x12: self._is_digit,
                            }
@@ -72,12 +58,11 @@ class Vm:
 
         if command:
             self.position = len(bytecode)
-            command.append(0x10)
             bytecode.extend(command)
         else:
             return
-        self.running = True
-        while self.running:
+
+        while self.position < len(bytecode):
             byte = bytecode[self.position]
 
             if byte in (0x02, 0x03, 0x04, 0x0E):
@@ -117,31 +102,31 @@ class Vm:
             case 0x04:
                 self.stack.append(self.stack.pop() != self.stack.pop())
 
-    def _right(self, *args):
+    def _right(self):
         self.tape.move_right()
 
-    def _left(self, *args):
+    def _left(self):
         self.tape.move_left()
 
-    def _pop_set_box(self, *args):
+    def _pop_set_box(self):
         self.box = self.stack.pop()
 
-    def _load_box(self, *args):
+    def _load_box(self):
         self.stack.append(self.box)
 
-    def _pop_set_tape(self, *args):
+    def _pop_set_tape(self):
         self.tape.set(self.stack.pop())
 
-    def _load_tape(self, *args):
+    def _load_tape(self):
         self.stack.append(self.tape.get())
 
-    def _pop_next_push(self, *args):
+    def _pop_next_push(self):
         s = self.stack.pop()
         if s == 72:
             raise errors.CorrectorCannotError('Не могу!')
         self.stack.append(s + 1)
 
-    def _pop_prev_push(self, *args):
+    def _pop_prev_push(self):
         s = self.stack.pop()
         if s == 1:
             raise errors.CorrectorCannotError('Не могу!')
@@ -165,13 +150,10 @@ class Vm:
         else:
             self._jump(args[1], self.position + len(args) + 1)
 
-    def _end(self, *args):
-        self.running = False
-
-    def _bool_not(self, *args):
+    def _bool_not(self):
         self.stack.append(not self.stack.pop())
 
-    def _is_digit(self, *args):
+    def _is_digit(self):
         self.stack.append(1 < self.stack.pop() < 12)  # 0 or 1, 2, 3, 4, 5...
 
     def _jump(self, tag_id: int, position: int):
