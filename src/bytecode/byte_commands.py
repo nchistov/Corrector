@@ -18,3 +18,9 @@ class ByteCommand(Enum):
     POP_JUMP_IF_ELSE = 0x0F
     BOOL_NOT = 0x11
     IS_DIGIT = 0x12
+
+class BinOp(Enum):
+    EQUAL = 0x01
+    MORE = 0x02
+    LESS = 0x03
+    NOT_EQUAL = 0x04

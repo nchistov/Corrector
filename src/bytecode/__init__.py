@@ -1,1 +1,1 @@
-from .byte_commands import ByteCommand
+from .byte_commands import ByteCommand, BinOp
