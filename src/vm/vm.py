@@ -21,19 +21,10 @@ TAG <id> | 0x00 <id> -- начало тега
 0x10 -- END
 0x11 -- BOOL_NOT
 0x12 -- IS_DIGIT
-...
-
-Проверки:
-0x00 -- Я=Л
-0x01 -- Я>Л
-0x02 -- Я<Л
-0x03 -- Я#Л
-0x04 <symbol's code> -- символ <symbol>
-0x05 <symbol's code> -- не символ <symbol>
 """
 from enum import Enum
 
-from . import errors
+from .. import errors
 
 
 class WaitingFor(Enum):

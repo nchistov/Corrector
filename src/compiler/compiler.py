@@ -1,5 +1,5 @@
 from .parser import Parser
-from .errors import CorrectorSyntaxError
+from ..errors import CorrectorSyntaxError
 from . import stack_elements as stackelems
 
 

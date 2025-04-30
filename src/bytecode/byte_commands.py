@@ -1,0 +1,20 @@
+from enum import Enum
+
+class ByteCommand(Enum):
+    TAG = 0x00
+    LOAD_TAG = 0x02
+    LOAD_SYMBOL = 0x03
+    BIN_OP = 0x04
+    RIGHT = 0x05
+    LEFT = 0x06
+    POP_SET_BOX = 0x07
+    LOAD_BOX = 0x08
+    POP_SET_TAPE = 0x09
+    LOAD_TAPE = 0x0A
+    POP_NEXT_PUSH = 0x0B
+    POP_PREV_PUSH = 0x0C
+    POP_JUMP = 0x0D
+    POP_JUMP_IF = 0x0E
+    POP_JUMP_IF_ELSE = 0x0F
+    BOOL_NOT = 0x11
+    IS_DIGIT = 0x12
