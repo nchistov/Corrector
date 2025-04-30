@@ -77,6 +77,10 @@ class Vm:
                 if byte != 0x0D: self.position += 1  # Если не произошло перехода
 
     def startup(self, bytecode: bytearray):
+        self.stack = []
+        self.call_stack = []
+        self.tags = {}
+
         for pos, byte in enumerate(bytecode):
             if byte == 0x00:
                 self.add_tag(bytecode[pos + 1], pos + 2)
@@ -88,7 +92,7 @@ class Vm:
         self.operations[command](*args)
 
     def _load_tag(self, *args):
-        self.stack.append(self.tags[args[0]])
+        self.stack.append(args[0])
 
     def _load_symbol(self, *args):
         self.stack.append(args[0])
