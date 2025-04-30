@@ -9,7 +9,7 @@ class Compiler:
         self.bytecode = bytearray()
 
         self.procedures = {}
-        self.tags = []
+        self.tags = {}
         self.stack = []
 
         self.commands = {
@@ -31,7 +31,7 @@ class Compiler:
         # Reset
         self.bytecode = bytearray()
         self.procedures = {}
-        self.tags = []
+        self.tags = {}
         self.stack = []
 
         tokens = self.parser.parse(code)
@@ -82,15 +82,15 @@ class Compiler:
                     self.handle_code_block(tok, self.stack[-1])
 
     def _add_tag(self, name: str = None) -> int:
-        tag_id = len(self.tags)
+        tag_id = len(self.tags) + 1
         if name:
             self.procedures[name] = tag_id
-        self.tags.append(bytearray())
+        self.tags[tag_id] = bytearray()
 
         return tag_id
 
     def handle_end(self):
-        self.tags[self.stack.pop().tag].append(bc.POP_JUMP)
+        self.tags[self.stack.pop().tag].append(bc.RETURN)
 
     def handle_procedure(self, tok, state):
         if not state.name:
@@ -110,7 +110,7 @@ class Compiler:
                 if tok.value == 'ТО':
                     if state.no:
                         self.tags[state.tag].append(bc.BOOL_NOT)
-                    self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)))  # len(self.tags), but not - 1 -- new tag.
+                    self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)+1))
                     state.code_block = True
                     self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
         else:
@@ -132,19 +132,19 @@ class Compiler:
         if not state.code_block:
             if state.check == -1:
                 if not state.no:  # On start
-                    self.tags[state.tag].extend((bc.LOAD_TAG, len(self.tags), bc.POP_JUMP))
+                    self.tags[state.tag].extend((bc.LOAD_TAG, len(self.tags)+1, bc.POP_JUMP))
                     state.tag = self._add_tag()
                 self.handle_check(tok, state)
             else:
                 if state.no:
                     self.tags[state.tag].append(bc.BOOL_NOT)
-                self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)))  # len(self.tags), but not - 1 -- new tag.
+                self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)+1))
                 state.code_block = True
                 self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
                 self.handle(tok)
         else:
             self.tags[-1] = self.tags[-1][:-1]  # Removing ending POP_JUMP
-            self.tags[-1].extend((bc.LOAD_TAG, state.tag, bc.POP_JUMP, bc.POP_JUMP))  # Double POP_JUMP: first for while jump, second -- end of block
+            self.tags[-1].extend((bc.LOAD_TAG, state.tag, bc.POP_JUMP, bc.RETURN))
             self.handle_end()
             self.handle(tok)
 
@@ -165,7 +165,7 @@ class Compiler:
             self.stack.append(stackelems.CodeBlock(False, False, tag))
         else:
             self.tags[-1] = self.tags[-1][:-1] * state.iterations  # Remove POP_JUMP and multiply bytecode
-            self.tags[-1].append(bc.POP_JUMP)  # and add POP_JUMP after multiplying
+            self.tags[-1].append(bc.RETURN)  # and add POP_JUMP after multiplying
             self.stack.pop()
             self.handle(tok)
 
@@ -243,6 +243,6 @@ class Compiler:
         self.tags[self.stack[-1].tag].append(bc.POP_JUMP)
 
     def compose(self):
-        for tag_id, tag_bytecode in enumerate(self.tags):
+        for tag_id, tag_bytecode in self.tags.items():
             self.bytecode.extend((bc.TAG, tag_id))
             self.bytecode.extend(tag_bytecode)

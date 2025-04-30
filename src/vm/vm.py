@@ -18,7 +18,7 @@ TAG <id> | 0x00 <id> -- начало тега
 0x0D -- POP_JUMP
 0x0E <tag> -- POP_JUMP_IF <tag>
 0x0F <tag> <tag> -- POP_JUMP_IF_ELSE <tag> <tag>
-0x10 -- END
+0x10 -- RETURN
 0x11 -- BOOL_NOT
 0x12 -- IS_DIGIT
 """
@@ -31,6 +31,7 @@ class Vm:
         self.box = 0
         self.tape = Tape()
         self.stack = []
+        self.call_stack = []
 
         self.tags = {}
         self.position = 0
@@ -49,6 +50,7 @@ class Vm:
                            0x0D: self._pop_jump,
                            0x0E: self._pop_jump_if,
                            0x0F: self._pop_jump_if_else,
+                           0x10: self._return,
                            0x11: self._bool_not,
                            0x12: self._is_digit,
                            }
@@ -133,10 +135,7 @@ class Vm:
         self.stack.append(s - 1)
 
     def _pop_jump(self):
-        if self.stack:
-            self.position = self.stack.pop()
-        else:
-            self.running = False
+        self._jump(self.stack.pop(), self.position + 1)
 
     def _pop_jump_if(self, *args):
         if self.stack.pop():
@@ -150,6 +149,9 @@ class Vm:
         else:
             self._jump(args[1], self.position + len(args) + 1)
 
+    def _return(self):
+        self.position = self.call_stack.pop()
+
     def _bool_not(self):
         self.stack.append(not self.stack.pop())
 
@@ -157,7 +159,7 @@ class Vm:
         self.stack.append(1 < self.stack.pop() < 12)  # 0 or 1, 2, 3, 4, 5...
 
     def _jump(self, tag_id: int, position: int):
-        self.stack.append(position)
+        self.call_stack.append(position)
         self.position = self.tags[tag_id]
 
 
