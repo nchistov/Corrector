@@ -1,5 +1,5 @@
 from .parser import Parser
-from ..errors import CorrectorSyntaxError
+from ..errors import CorrectorSyntaxError, CorrectorMemoryError
 from . import stack_elements as stackelems
 from .. import bytecode as bc
 
@@ -83,6 +83,8 @@ class Compiler:
 
     def _add_tag(self, name: str = None) -> int:
         tag_id = len(self.tags) + 1
+        if tag_id >= 16**4:
+            raise CorrectorMemoryError('Слишком большое число конструкций')
         if name:
             self.procedures[name] = tag_id
         self.tags[tag_id] = bytearray()
@@ -241,6 +243,12 @@ class Compiler:
         self.tags[self.stack[-1].tag].append(bc.LOAD_TAG)
         self.tags[self.stack[-1].tag].append(self.procedures[name])
         self.tags[self.stack[-1].tag].append(bc.POP_JUMP)
+
+    def add_number(self, number: int, tag: int):
+        """adding a number in two bytes"""
+        first_byte = number >> 8
+        second_byte = number - (first_byte << 8)
+        self.tags[tag].extend((first_byte, second_byte))
 
     def compose(self):
         for tag_id, tag_bytecode in self.tags.items():
