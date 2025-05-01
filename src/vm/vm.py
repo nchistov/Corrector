@@ -24,6 +24,10 @@ TAG <id> | 0x00 <id> -- начало тега
 """
 from .. import errors
 
+ByteCommand = tuple[int, int, tuple[int]]
+args_num = {0x00: 1, 0x02: 1, 0x03: 1, 0x04: 1, 0x05: 0, 0x06: 0, 0x07: 0, 0x08: 0, 0x09: 0, 0x0A: 0, 0x0B: 0, 0x0C: 0,
+        0x0D: 0, 0x0E: 1, 0x0F: 2, 0x10: 0, 0x11: 0, 0x12: 0}
+
 
 class Vm:
     """Виртуальная машина"""
@@ -35,6 +39,7 @@ class Vm:
 
         self.tags = {}
         self.position = 0
+        self.commands: list[ByteCommand] = []
 
         self.operations = {0x02: self._load_tag,
                            0x03: self._load_symbol,
@@ -56,40 +61,54 @@ class Vm:
                            }
 
     def run(self, bytecode: bytearray, command: bytearray):
-        self.startup(bytecode)
-
         if command:
-            self.position = len(bytecode)
-            bytecode.extend(command)
+            self.startup(bytecode, command)
         else:
             return
 
-        while self.position < len(bytecode):
-            byte = bytecode[self.position]
+        while self.position < len(self.commands):
+            command = self.commands[self.position]
 
-            if byte in (0x02, 0x03, 0x04, 0x0E):
-                self._run_command(byte, bytecode[self.position+1])
-                if byte != 0x0E: self.position += 2  # Если не произошло перехода
-            elif byte == 0x0F:
-                self._run_command(byte, bytecode[self.position+1], bytecode[self.position+2])
-            else:
-                self._run_command(byte)
-                if byte != 0x0D: self.position += 1  # Если не произошло перехода
+            self._run_command(command[1], *command[2])
 
-    def startup(self, bytecode: bytearray):
+    def startup(self, bytecode: bytearray, command: bytearray):
         self.stack = []
         self.call_stack = []
         self.tags = {}
+        self.commands = []
 
-        for pos, byte in enumerate(bytecode):
-            if byte == 0x00:
-                self.add_tag(bytecode[pos + 1], pos + 2)
+        bytes_iter = iter(bytecode)
+        command_iter = iter(command)
+
+        position = 0
+
+        try:
+            while True:
+                byte = next(bytes_iter)
+                command = (0, byte, tuple((next(bytes_iter) for _ in range(args_num[byte]))))
+
+                if command[1] == 0x00:  # TAG
+                    self.add_tag(command[2][0], position)
+                else:
+                    self.commands.append(command)
+                    position += 1
+        except StopIteration:
+            self.position = position
+            try:
+                while True:
+                    byte = next(command_iter)
+                    self.commands.append((0, byte, tuple([next(command_iter) for _ in range(args_num[byte])])))
+            except StopIteration:
+                return
 
     def add_tag(self, tag_id: int, pos: int):
         self.tags[tag_id] = pos
 
     def _run_command(self, command: int, *args):
         self.operations[command](*args)
+
+        if command not in (0x0D, 0x0E, 0x0F, 0x10):  # Не произошло перехода
+            self.position += 1
 
     def _load_tag(self, *args):
         self.stack.append(args[0])
@@ -145,7 +164,7 @@ class Vm:
         if self.stack.pop():
             self._jump(args[0], self.position + len(args) + 1)
         else:
-            self.position += 2
+            self.position += 1
 
     def _pop_jump_if_else(self, *args):
         if self.stack.pop():
@@ -165,6 +184,9 @@ class Vm:
     def _jump(self, tag_id: int, position: int):
         self.call_stack.append(position)
         self.position = self.tags[tag_id]
+
+    def _get_number(self, first_byte: int, second_byte: int) -> int:
+        return (first_byte << 8) + second_byte
 
 
 class Tape:
