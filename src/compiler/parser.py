@@ -52,7 +52,7 @@ class Parser:
 
     def _get_tok(self) -> Token:
         if self.cur_token in self.symbols:
-            return Token('SYMBOL', self.symbols.index(self.cur_token)+1, self.line, self.row)  # +1 because vm uses 0x00 for tags
+            return Token('SYMBOL', self.symbols.index(self.cur_token), self.line, self.row)
         elif self.cur_token in self.keywords:
             return Token('KEYWORD', self.cur_token, self.line, self.row)
         elif self.cur_token in self.commands:

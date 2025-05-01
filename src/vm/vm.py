@@ -23,6 +23,7 @@ TAG <id> | 0x00 <id> -- начало тега
 0x12 -- IS_DIGIT
 """
 from .. import errors
+from .. import bytecode as bc
 
 ByteCommand = tuple[int, int, tuple[int]]
 args_num = {0x00: 1, 0x02: 1, 0x03: 1, 0x04: 1, 0x05: 0, 0x06: 0, 0x07: 0, 0x08: 0, 0x09: 0, 0x0A: 0, 0x0B: 0, 0x0C: 0,
@@ -87,7 +88,7 @@ class Vm:
                 byte = next(bytes_iter)
                 command = (0, byte, tuple((next(bytes_iter) for _ in range(args_num[byte]))))
 
-                if command[1] == 0x00:  # TAG
+                if command[1] == bc.TAG:  # TAG
                     self.add_tag(command[2][0], position)
                 else:
                     self.commands.append(command)
@@ -107,7 +108,7 @@ class Vm:
     def _run_command(self, command: int, *args):
         self.operations[command](*args)
 
-        if command not in (0x0D, 0x0E, 0x0F, 0x10):  # Не произошло перехода
+        if command not in (bc.POP_JUMP, bc.POP_JUMP_IF, bc.POP_JUMP_IF_ELSE, bc.RETURN):  # Не произошло перехода
             self.position += 1
 
     def _load_tag(self, *args):
@@ -118,13 +119,13 @@ class Vm:
 
     def _bin_op(self, *args):
         match args[0]:
-            case 0x01:
+            case bc.EQUAL:
                 self.stack.append(self.stack.pop() == self.stack.pop())
-            case 0x02:
+            case bc.MORE:
                 self.stack.append(self.stack.pop() > self.stack.pop())
-            case 0x03:
+            case bc.LESS:
                 self.stack.append(self.stack.pop() < self.stack.pop())
-            case 0x04:
+            case bc.NOT_EQUAL:
                 self.stack.append(self.stack.pop() != self.stack.pop())
 
     def _right(self):

@@ -9,7 +9,7 @@ class Compiler:
         self.bytecode = bytearray()
 
         self.procedures = {}
-        self.tags = {}
+        self.tags = []
         self.stack = []
 
         self.commands = {
@@ -31,7 +31,7 @@ class Compiler:
         # Reset
         self.bytecode = bytearray()
         self.procedures = {}
-        self.tags = {}
+        self.tags = []
         self.stack = []
 
         tokens = self.parser.parse(code)
@@ -82,12 +82,12 @@ class Compiler:
                     self.handle_code_block(tok, self.stack[-1])
 
     def _add_tag(self, name: str = None) -> int:
-        tag_id = len(self.tags) + 1
+        tag_id = len(self.tags)
         if tag_id >= 16**4:
             raise CorrectorMemoryError('Слишком большое число конструкций')
         if name:
             self.procedures[name] = tag_id
-        self.tags[tag_id] = bytearray()
+        self.tags.append(bytearray())
 
         return tag_id
 
@@ -112,7 +112,7 @@ class Compiler:
                 if tok.value == 'ТО':
                     if state.no:
                         self.tags[state.tag].append(bc.BOOL_NOT)
-                    self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)+1))
+                    self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)))
                     state.code_block = True
                     self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
         else:
@@ -134,13 +134,13 @@ class Compiler:
         if not state.code_block:
             if state.check == -1:
                 if not state.no:  # On start
-                    self.tags[state.tag].extend((bc.LOAD_TAG, len(self.tags)+1, bc.POP_JUMP))
+                    self.tags[state.tag].extend((bc.LOAD_TAG, len(self.tags), bc.POP_JUMP))
                     state.tag = self._add_tag()
                 self.handle_check(tok, state)
             else:
                 if state.no:
                     self.tags[state.tag].append(bc.BOOL_NOT)
-                self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)+1))
+                self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)))
                 state.code_block = True
                 self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
                 self.handle(tok)
@@ -202,7 +202,7 @@ class Compiler:
         if not state.started:
             if tok.type in ('COMMAND', 'WORD'):
                 self.handle_command(tok, state)
-            elif tok.type == 'SYMBOL' and tok.value == 57:  # {
+            elif tok.type == 'SYMBOL' and tok.value == 56:  # {
                 state.multiline = True
             else:
                 raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}')
@@ -211,7 +211,7 @@ class Compiler:
             if state.multiline:
                 if tok.type in ('COMMAND', 'WORD'):
                     self.handle_command(tok, state)
-                elif tok.type == 'SYMBOL' and tok.value == 58:  # }
+                elif tok.type == 'SYMBOL' and tok.value == 57:  # }
                     self.handle_end()
                 else:
                     raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}')
@@ -251,6 +251,6 @@ class Compiler:
         self.tags[tag].extend((first_byte, second_byte))
 
     def compose(self):
-        for tag_id, tag_bytecode in self.tags.items():
+        for tag_id, tag_bytecode in enumerate(self.tags):
             self.bytecode.extend((bc.TAG, tag_id))
             self.bytecode.extend(tag_bytecode)
