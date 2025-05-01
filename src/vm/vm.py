@@ -26,8 +26,8 @@ from .. import errors
 from .. import bytecode as bc
 
 ByteCommand = tuple[int, int, tuple[int]]
-args_num = {0x00: 1, 0x02: 1, 0x03: 1, 0x04: 1, 0x05: 0, 0x06: 0, 0x07: 0, 0x08: 0, 0x09: 0, 0x0A: 0, 0x0B: 0, 0x0C: 0,
-        0x0D: 0, 0x0E: 1, 0x0F: 2, 0x10: 0, 0x11: 0, 0x12: 0}
+args_num = {0x00: 2, 0x02: 2, 0x03: 1, 0x04: 1, 0x05: 0, 0x06: 0, 0x07: 0, 0x08: 0, 0x09: 0, 0x0A: 0, 0x0B: 0, 0x0C: 0,
+        0x0D: 0, 0x0E: 2, 0x0F: 4, 0x10: 0, 0x11: 0, 0x12: 0}
 
 
 class Vm:
@@ -112,7 +112,7 @@ class Vm:
             self.position += 1
 
     def _load_tag(self, *args):
-        self.stack.append(args[0])
+        self.stack.append(self._get_number(args[0], args[1]))
 
     def _load_symbol(self, *args):
         self.stack.append(args[0])
@@ -163,15 +163,15 @@ class Vm:
 
     def _pop_jump_if(self, *args):
         if self.stack.pop():
-            self._jump(args[0], self.position + len(args) + 1)
+            self._jump(self._get_number(args[0], args[1]), self.position + 1)
         else:
             self.position += 1
 
     def _pop_jump_if_else(self, *args):
         if self.stack.pop():
-            self._jump(args[0], self.position + len(args) + 1)
+            self._jump(self._get_number(args[0], args[1]), self.position + 1)
         else:
-            self._jump(args[1], self.position + len(args) + 1)
+            self._jump(self._get_number(args[2], args[3]), self.position + 1)
 
     def _return(self):
         self.position = self.call_stack.pop()

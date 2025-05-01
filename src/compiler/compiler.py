@@ -83,7 +83,7 @@ class Compiler:
 
     def _add_tag(self, name: str = None) -> int:
         tag_id = len(self.tags)
-        if tag_id >= 16**4:
+        if tag_id >= 16**4:  # Два байта
             raise CorrectorMemoryError('Слишком большое число конструкций')
         if name:
             self.procedures[name] = tag_id
@@ -112,16 +112,20 @@ class Compiler:
                 if tok.value == 'ТО':
                     if state.no:
                         self.tags[state.tag].append(bc.BOOL_NOT)
-                    self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)))
+                    self.tags[state.tag].extend((bc.POP_JUMP_IF, *self.add_number(len(self.tags))))
                     state.code_block = True
                     self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
         else:
             if tok.value == 'ИНАЧЕ':
                 if not state.else_check:
-                    if_tag = self.tags[state.tag][-1]  # Last element of a bytecode
+                    if_tag = self.get_number(*self.tags[state.tag][-2:])  # Последняя цифра в байт-коде
                     else_tag = self._add_tag()
-                    self.tags[state.tag] = self.tags[state.tag][:-2]  # Removing POP_JUMP_IF <tag>
-                    self.tags[state.tag].extend((bc.POP_JUMP_IF_ELSE, if_tag, else_tag))  # POP_JUMP_IF_ELSE <if_tag> <else_tag>
+                    self.tags[state.tag] = self.tags[state.tag][:-3]  # Удаление POP_JUMP_IF <tag>
+
+                    self.tags[state.tag].extend((bc.POP_JUMP_IF_ELSE,
+                                                 *self.add_number(if_tag),
+                                                 *self.add_number(else_tag)))  # POP_JUMP_IF_ELSE <if_tag> <else_tag>
+
                     self.stack.append(stackelems.CodeBlock(False, False, else_tag))
                     state.else_check = True
                 else:
@@ -134,26 +138,26 @@ class Compiler:
         if not state.code_block:
             if state.check == -1:
                 if not state.no:  # On start
-                    self.tags[state.tag].extend((bc.LOAD_TAG, len(self.tags), bc.POP_JUMP))
+                    self.tags[state.tag].extend((bc.LOAD_TAG, *self.add_number(len(self.tags)), bc.POP_JUMP))
                     state.tag = self._add_tag()
                 self.handle_check(tok, state)
             else:
                 if state.no:
                     self.tags[state.tag].append(bc.BOOL_NOT)
-                self.tags[state.tag].extend((bc.POP_JUMP_IF, len(self.tags)))
+                self.tags[state.tag].extend((bc.POP_JUMP_IF, *self.add_number(len(self.tags))))
                 state.code_block = True
                 self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
                 self.handle(tok)
         else:
-            self.tags[-1] = self.tags[-1][:-1]  # Removing ending POP_JUMP
-            self.tags[-1].extend((bc.LOAD_TAG, state.tag, bc.POP_JUMP, bc.RETURN))
+            self.tags[-1] = self.tags[-1][:-1]  # Удаление RETURN
+            self.tags[-1].extend((bc.LOAD_TAG, self.add_number(state.tag), bc.POP_JUMP, bc.RETURN))
             self.handle_end()
             self.handle(tok)
 
     def handle_for(self, tok, state):
         if state.iterations == -1:
             if tok.type == 'SYMBOL':
-                if 1 < tok.value < 11:  # No 0 iterations!
+                if 0 < tok.value < 10:
                     state.iterations = tok.value - 1
                 else:
                     raise CorrectorSyntaxError('Ожидалось кол-во повторений')
@@ -163,11 +167,11 @@ class Compiler:
                 raise CorrectorSyntaxError('Ожидалось кол-во повторений')
 
             tag = self._add_tag()
-            self.tags[state.tag].extend((bc.LOAD_TAG, tag, bc.POP_JUMP))
+            self.tags[state.tag].extend((bc.LOAD_TAG, *self.add_number(tag), bc.POP_JUMP))
             self.stack.append(stackelems.CodeBlock(False, False, tag))
         else:
-            self.tags[-1] = self.tags[-1][:-1] * state.iterations  # Remove POP_JUMP and multiply bytecode
-            self.tags[-1].append(bc.RETURN)  # and add POP_JUMP after multiplying
+            self.tags[-1] = self.tags[-1][:-1] * state.iterations  # Удаление RETURN и "умножение" байт-кода
+            self.tags[-1].append(bc.RETURN)  # и добавление RETURN в конец
             self.stack.pop()
             self.handle(tok)
 
@@ -240,17 +244,18 @@ class Compiler:
             raise CorrectorSyntaxError('Ожидался символ')
 
     def handle_procedure_call(self, name: str):
-        self.tags[self.stack[-1].tag].append(bc.LOAD_TAG)
-        self.tags[self.stack[-1].tag].append(self.procedures[name])
-        self.tags[self.stack[-1].tag].append(bc.POP_JUMP)
+        self.tags[self.stack[-1].tag].extend((bc.LOAD_TAG, *self.add_number(self.procedures[name]), bc.POP_JUMP))
 
-    def add_number(self, number: int, tag: int):
+    def add_number(self, number: int) -> [int, int]:
         """adding a number in two bytes"""
         first_byte = number >> 8
         second_byte = number - (first_byte << 8)
-        self.tags[tag].extend((first_byte, second_byte))
+        return first_byte, second_byte
+
+    def get_number(self, byte1: int, byte2: int) -> int:
+        return byte1 << 8 + byte2
 
     def compose(self):
         for tag_id, tag_bytecode in enumerate(self.tags):
-            self.bytecode.extend((bc.TAG, tag_id))
+            self.bytecode.extend((bc.TAG, *self.add_number(tag_id)))
             self.bytecode.extend(tag_bytecode)
