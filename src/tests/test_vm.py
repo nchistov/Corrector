@@ -15,6 +15,6 @@ def test_bin_less():
     assert v.stack[0] is True
 
 def test_tags():
-    v.run(bytearray((bc.TAG, 0x01, bc.LOAD_SYMBOL, 0x01, bc.POP_SET_TAPE, bc.RETURN)), bytearray((bc.LOAD_TAG, 0x01, bc.POP_JUMP)))
+    v.run(bytearray((bc.TAG, 0x00, 0x00, bc.LOAD_SYMBOL, 0x01, bc.POP_SET_TAPE, bc.RETURN)), bytearray((bc.LOAD_TAG, 0x00, 0x00, bc.POP_JUMP)))
 
     assert v.tape.get() == 1
