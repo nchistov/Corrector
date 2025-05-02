@@ -6,8 +6,6 @@ from .. import bytecode as bc
 
 class Compiler:
     def __init__(self):
-        self.bytecode = bytearray()
-
         self.procedures = {}
         self.tags = []
         self.stack = []
@@ -27,12 +25,13 @@ class Compiler:
 
         self.parser = Parser()
 
-    def startup(self, code):
-        # Reset
-        self.bytecode = bytearray()
+    def reset(self):
         self.procedures = {}
         self.tags = []
         self.stack = []
+
+    def startup(self, code):
+        self.reset()
 
         tokens = self.parser.parse(code)
 
@@ -48,7 +47,7 @@ class Compiler:
         except StopIteration:
             return
 
-    def compile(self, code):
+    def compile(self, code: str) -> bytearray:
         self.startup(code)
 
         for tok in self.parser.parse(code):
@@ -57,8 +56,42 @@ class Compiler:
         if self.stack:
             raise CorrectorSyntaxError('Незавершённый блок!')
 
-        self.compose()
-        return self.bytecode
+        return self.compose()
+
+    def compile_one_command(self, code: str) -> bytearray:
+        tokens = self.parser.parse(code)
+        bytecode = bytearray()
+
+        waiting = False
+
+        try:
+            tok = next(tokens)
+
+            if tok.type == "COMMAND":
+                if tok.value == 'ПИШИ':
+                    waiting = True
+                    symbol = next(tokens)
+                    waiting = False
+
+                    if symbol.type == "SYMBOL":
+                        bytecode.extend((bc.LOAD_SYMBOL, symbol.value, bc.POP_SET_TAPE))
+                    else:
+                        raise CorrectorSyntaxError('Ожидался символ')
+                else:
+                    bytecode.extend(self.commands[tok.value])
+            elif tok.type == "WORD" or tok.type == "SYMBOL":
+                if tok.value in self.procedures.keys():
+                    self.handle_procedure_call(tok.value)
+                else:
+                    raise CorrectorSyntaxError(f'Не определена процедура с именем {tok.value}')
+
+            if next(tokens):
+                raise CorrectorSyntaxError('В строке ввода команды не должно присутствовать ничего, кроме команды')
+        except StopIteration:
+            if waiting:
+                raise CorrectorSyntaxError('Ожидался символ')
+
+        return bytecode
 
     def handle(self, tok):
         if not self.stack:
@@ -196,7 +229,7 @@ class Compiler:
                 self.stack.append(stackelems.WriteCommand(state.tag))
             else:
                 self.tags[state.tag].extend(self.commands[tok.value])
-        elif tok.type == "WORD":
+        elif tok.type == "WORD" or tok.type == "SYMBOL":
             if tok.value in self.procedures.keys():
                 self.handle_procedure_call(tok.value)
             else:
@@ -237,8 +270,7 @@ class Compiler:
 
     def handle_symbol(self, tok, state):
         if tok.type == 'SYMBOL':
-            self.tags[state.tag].extend((bc.LOAD_SYMBOL, tok.value))
-            self.tags[state.tag].append(bc.POP_SET_TAPE)
+            self.tags[state.tag].extend((bc.LOAD_SYMBOL, tok.value, bc.POP_SET_TAPE))
             self.stack.pop()
         else:
             raise CorrectorSyntaxError('Ожидался символ')
@@ -253,9 +285,13 @@ class Compiler:
         return first_byte, second_byte
 
     def get_number(self, byte1: int, byte2: int) -> int:
-        return byte1 << 8 + byte2
+        return (byte1 << 8) + byte2
 
-    def compose(self):
+    def compose(self) -> bytearray:
+        bytecode = bytearray()
+
         for tag_id, tag_bytecode in enumerate(self.tags):
-            self.bytecode.extend((bc.TAG, *self.add_number(tag_id)))
-            self.bytecode.extend(tag_bytecode)
+            bytecode.extend((bc.TAG, *self.add_number(tag_id)))
+            bytecode.extend(tag_bytecode)
+
+        return bytecode
