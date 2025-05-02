@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     w = Window()
     w.setWindowTitle('Корректор')
-    w.resize(600, 400)
+    w.resize(800, 500)
     w.show()
 
     sys.exit(app.exec())

@@ -1,4 +1,4 @@
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
 
 symbols = [' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
            'А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З','И', 'Й', 'К',
@@ -11,7 +11,7 @@ class TapeWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
 
-        self.box = QtWidgets.QHBoxLayout()
+        self.box = QtWidgets.QGridLayout()
 
         self.labels = [QtWidgets.QLabel(' ') for _ in range(11)]
 
@@ -20,7 +20,16 @@ class TapeWidget(QtWidgets.QWidget):
                 lbl.setStyleSheet('border: 2px solid;')
             else:
                 lbl.setStyleSheet('border: 1px solid;')
-            self.box.addWidget(lbl)
+            lbl.setFixedSize(QtCore.QSize(30, 60))
+            self.box.addWidget(lbl, 0, i)
+
+        self.right_btn = QtWidgets.QPushButton('')
+        self.left_btn = QtWidgets.QPushButton('')
+        self.right_btn.setFixedWidth(30)
+        self.left_btn.setFixedWidth(30)
+
+        self.box.addWidget(self.left_btn, 1, 0)
+        self.box.addWidget(self.right_btn, 1, 10)
 
         self.setLayout(self.box)
 
