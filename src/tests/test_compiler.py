@@ -73,3 +73,9 @@ def test_procedure_call_before_def():
     bc = c.compile(code)
 
     assert bc == bytearray((TAG, 0x00, 0x00, LOAD_TAG, 0x00, 0x01, POP_JUMP, RETURN, TAG, 0x00, 0x01, RIGHT, RETURN))
+
+def test_compile_one_command():
+    command = 'ВПРАВО'
+    bc = c.compile_one_command(command)
+
+    assert bc == bytearray((RIGHT,))
