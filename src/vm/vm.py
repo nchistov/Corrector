@@ -194,7 +194,7 @@ class Tape:
     """Рабочая лента исполнителя"""
     def __init__(self):
         self.left_data = []
-        self.right_data = [1]
+        self.right_data = [0]
         self.position = 0
 
     def set(self, symbol: int):
@@ -208,19 +208,19 @@ class Tape:
 
     def move_left(self):
         if self.position < 0  and -self.position == len(self.left_data):
-            self.left_data.append(1)
+            self.left_data.append(0)
         self.position -= 1
 
     def move_right(self):
         if self.position == len(self.right_data) - 1:
-            self.right_data.append(1)
+            self.right_data.append(0)
         self.position += 1
 
     def get_preview(self):
         for pos in range(self.position-5, self.position+6):
             if pos < 0  and -pos > len(self.left_data):
-                yield 1
+                yield 0
             elif pos > 0 and pos > len(self.right_data) - 1:
-                yield 1
+                yield 0
             else:
                 yield self.right_data[pos] if pos >= 0 else self.left_data[-pos+1]

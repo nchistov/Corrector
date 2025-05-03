@@ -81,7 +81,7 @@ class Compiler:
                     bytecode.extend(self.commands[tok.value])
             elif tok.type == "WORD" or tok.type == "SYMBOL":
                 if tok.value in self.procedures.keys():
-                    self.handle_procedure_call(tok.value)
+                    bytecode.extend((bc.LOAD_TAG, *self.add_number(self.procedures[tok.value]), bc.POP_JUMP))
                 else:
                     raise CorrectorSyntaxError(f'Не определена процедура с именем {tok.value}')
 

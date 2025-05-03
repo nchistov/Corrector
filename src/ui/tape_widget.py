@@ -20,11 +20,12 @@ class TapeWidget(QtWidgets.QWidget):
                 lbl.setStyleSheet('border: 2px solid;')
             else:
                 lbl.setStyleSheet('border: 1px solid;')
+            lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             lbl.setFixedSize(QtCore.QSize(30, 60))
             self.box.addWidget(lbl, 0, i)
 
-        self.right_btn = QtWidgets.QPushButton('')
-        self.left_btn = QtWidgets.QPushButton('')
+        self.right_btn = QtWidgets.QPushButton('→')
+        self.left_btn = QtWidgets.QPushButton('←')
         self.right_btn.setFixedWidth(30)
         self.left_btn.setFixedWidth(30)
 
@@ -35,4 +36,4 @@ class TapeWidget(QtWidgets.QWidget):
 
     def update_tape(self, values):
         for v, l in zip(values, self.labels):
-            l.setText(symbols[v-1])
+            l.setText(symbols[v])

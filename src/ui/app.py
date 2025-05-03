@@ -1,6 +1,8 @@
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
 
-from tape_widget import TapeWidget
+from .tape_widget import TapeWidget
+from ..compiler import Compiler
+from ..vm import Vm
 
 
 class Window(QtWidgets.QWidget):
@@ -21,6 +23,11 @@ class Window(QtWidgets.QWidget):
                                 QtWidgets.QLabel('} . , ! ? ; : \' " #'),
                                 QtWidgets.QLabel('| $ % ~ @')]
 
+        self.go_button.clicked.connect(self.run_command)
+
+        self.go_button.setFixedWidth(30)
+        self.reset_button.setFixedWidth(30)
+
         self.grid = QtWidgets.QGridLayout()
         self.alphabet_box = QtWidgets.QVBoxLayout()
         self.alphabet_group = QtWidgets.QGroupBox('АЛФАВИТ')
@@ -39,3 +46,16 @@ class Window(QtWidgets.QWidget):
         self.grid.addWidget(self.tape, 1, 0)
 
         self.setLayout(self.grid)
+
+        self.vm = Vm()
+        self.compiler = Compiler()
+
+    def run_command(self):
+        command = self.commands_input.text()
+        code = self.code_input.toPlainText()
+
+        bc = self.compiler.compile(code)
+        command_bc = self.compiler.compile_one_command(command)
+
+        self.vm.run(bc, command_bc)
+        self.tape.update_tape(self.vm.tape.get_preview())
