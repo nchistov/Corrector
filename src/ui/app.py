@@ -1,4 +1,4 @@
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets
 
 from .tape_widget import TapeWidget
 from ..compiler import Compiler

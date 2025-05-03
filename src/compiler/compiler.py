@@ -1,6 +1,6 @@
 from .parser import Parser
 from ..errors import CorrectorSyntaxError, CorrectorMemoryError
-from . import stack_elements as stackelems
+from . import stack_elements
 from .. import bytecode as bc
 
 
@@ -81,7 +81,7 @@ class Compiler:
                     bytecode.extend(self.commands[tok.value])
             elif tok.type == "WORD" or tok.type == "SYMBOL":
                 if tok.value in self.procedures.keys():
-                    bytecode.extend((bc.LOAD_TAG, *self.add_number(self.procedures[tok.value]), bc.POP_JUMP))
+                    bytecode.extend((bc.LOAD_TAG, *add_number(self.procedures[tok.value]), bc.POP_JUMP))
                 else:
                     raise CorrectorSyntaxError(f'Не определена процедура с именем {tok.value}')
 
@@ -96,22 +96,22 @@ class Compiler:
     def handle(self, tok):
         if not self.stack:
             if tok.type == 'KEYWORD' and tok.value == 'ЭТО':
-                self.stack.append(stackelems.Procedure('', -1))
+                self.stack.append(stack_elements.Procedure('', -1))
             else:
                 raise CorrectorSyntaxError('На внешнем уровне программы не должно быть команд')
         else:
             match self.stack[-1]:
-                case stackelems.Procedure:
+                case stack_elements.Procedure:
                     self.handle_procedure(tok, self.stack[-1])
-                case stackelems.WriteCommand:
+                case stack_elements.WriteCommand:
                     self.handle_symbol(tok, self.stack[-1])
-                case stackelems.If:
+                case stack_elements.If:
                     self.handle_if(tok, self.stack[-1])
-                case stackelems.ForLoop:
+                case stack_elements.ForLoop:
                     self.handle_for(tok, self.stack[-1])
-                case stackelems.WhileLoop:
+                case stack_elements.WhileLoop:
                     self.handle_while(tok, self.stack[-1])
-                case stackelems.CodeBlock:
+                case stack_elements.CodeBlock:
                     self.handle_code_block(tok, self.stack[-1])
 
     def _add_tag(self, name: str = None) -> int:
@@ -145,21 +145,21 @@ class Compiler:
                 if tok.value == 'ТО':
                     if state.no:
                         self.tags[state.tag].append(bc.BOOL_NOT)
-                    self.tags[state.tag].extend((bc.POP_JUMP_IF, *self.add_number(len(self.tags))))
+                    self.tags[state.tag].extend((bc.POP_JUMP_IF, *add_number(len(self.tags))))
                     state.code_block = True
-                    self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
+                    self.stack.append(stack_elements.CodeBlock(False, False, self._add_tag()))
         else:
             if tok.value == 'ИНАЧЕ':
                 if not state.else_check:
-                    if_tag = self.get_number(*self.tags[state.tag][-2:])  # Последняя цифра в байт-коде
+                    if_tag = get_number(*self.tags[state.tag][-2:])  # Последняя цифра в байт-коде
                     else_tag = self._add_tag()
                     self.tags[state.tag] = self.tags[state.tag][:-3]  # Удаление POP_JUMP_IF <tag>
 
                     self.tags[state.tag].extend((bc.POP_JUMP_IF_ELSE,
-                                                 *self.add_number(if_tag),
-                                                 *self.add_number(else_tag)))  # POP_JUMP_IF_ELSE <if_tag> <else_tag>
+                                                 *add_number(if_tag),
+                                                 *add_number(else_tag)))  # POP_JUMP_IF_ELSE <if_tag> <else_tag>
 
-                    self.stack.append(stackelems.CodeBlock(False, False, else_tag))
+                    self.stack.append(stack_elements.CodeBlock(False, False, else_tag))
                     state.else_check = True
                 else:
                     raise CorrectorSyntaxError('Недопустимые два блока ИНАЧЕ')
@@ -171,19 +171,19 @@ class Compiler:
         if not state.code_block:
             if state.check == -1:
                 if not state.no:  # On start
-                    self.tags[state.tag].extend((bc.LOAD_TAG, *self.add_number(len(self.tags)), bc.POP_JUMP))
+                    self.tags[state.tag].extend((bc.LOAD_TAG, *add_number(len(self.tags)), bc.POP_JUMP))
                     state.tag = self._add_tag()
                 self.handle_check(tok, state)
             else:
                 if state.no:
                     self.tags[state.tag].append(bc.BOOL_NOT)
-                self.tags[state.tag].extend((bc.POP_JUMP_IF, *self.add_number(len(self.tags))))
+                self.tags[state.tag].extend((bc.POP_JUMP_IF, *add_number(len(self.tags))))
                 state.code_block = True
-                self.stack.append(stackelems.CodeBlock(False, False, self._add_tag()))
+                self.stack.append(stack_elements.CodeBlock(False, False, self._add_tag()))
                 self.handle(tok)
         else:
             self.tags[-1] = self.tags[-1][:-1]  # Удаление RETURN
-            self.tags[-1].extend((bc.LOAD_TAG, self.add_number(state.tag), bc.POP_JUMP, bc.RETURN))
+            self.tags[-1].extend((bc.LOAD_TAG, *add_number(state.tag), bc.POP_JUMP, bc.RETURN))
             self.handle_end()
             self.handle(tok)
 
@@ -200,8 +200,8 @@ class Compiler:
                 raise CorrectorSyntaxError('Ожидалось кол-во повторений')
 
             tag = self._add_tag()
-            self.tags[state.tag].extend((bc.LOAD_TAG, *self.add_number(tag), bc.POP_JUMP))
-            self.stack.append(stackelems.CodeBlock(False, False, tag))
+            self.tags[state.tag].extend((bc.LOAD_TAG, *add_number(tag), bc.POP_JUMP))
+            self.stack.append(stack_elements.CodeBlock(False, False, tag))
         else:
             self.tags[-1] = self.tags[-1][:-1] * state.iterations  # Удаление RETURN и "умножение" байт-кода
             self.tags[-1].append(bc.RETURN)  # и добавление RETURN в конец
@@ -212,21 +212,21 @@ class Compiler:
         if tok.type == 'KEYWORD':
             match tok.value:
                 case 'КОНЕЦ':
-                    if state == stackelems.Procedure:
+                    if state == stack_elements.Procedure:
                         self.handle_end()
                     else:
                         raise CorrectorSyntaxError('Неожиданное ключевое слово КОНЕЦ')
                 case 'ЕСЛИ':
-                    self.stack.append(stackelems.If(False, False, -1, state.tag, False, False))
+                    self.stack.append(stack_elements.If(False, False, -1, state.tag, False, False))
                 case 'ПОВТОРИ':
-                    self.stack.append(stackelems.ForLoop(state.tag, -1))
+                    self.stack.append(stack_elements.ForLoop(state.tag, -1))
                 case 'ПОКА':
-                    self.stack.append(stackelems.WhileLoop(False, False, -1, state.tag, False))
+                    self.stack.append(stack_elements.WhileLoop(False, False, -1, state.tag, False))
                 case _:
                     raise CorrectorSyntaxError(f'Неожиданное ключевое слово {tok.value}')
         elif tok.type == "COMMAND":
             if tok.value == 'ПИШИ':
-                self.stack.append(stackelems.WriteCommand(state.tag))
+                self.stack.append(stack_elements.WriteCommand(state.tag))
             else:
                 self.tags[state.tag].extend(self.commands[tok.value])
         elif tok.type == "WORD" or tok.type == "SYMBOL":
@@ -276,22 +276,23 @@ class Compiler:
             raise CorrectorSyntaxError('Ожидался символ')
 
     def handle_procedure_call(self, name: str):
-        self.tags[self.stack[-1].tag].extend((bc.LOAD_TAG, *self.add_number(self.procedures[name]), bc.POP_JUMP))
-
-    def add_number(self, number: int) -> [int, int]:
-        """adding a number in two bytes"""
-        first_byte = number >> 8
-        second_byte = number - (first_byte << 8)
-        return first_byte, second_byte
-
-    def get_number(self, byte1: int, byte2: int) -> int:
-        return (byte1 << 8) + byte2
+        self.tags[self.stack[-1].tag].extend((bc.LOAD_TAG, *add_number(self.procedures[name]), bc.POP_JUMP))
 
     def compose(self) -> bytearray:
         bytecode = bytearray()
 
         for tag_id, tag_bytecode in enumerate(self.tags):
-            bytecode.extend((bc.TAG, *self.add_number(tag_id)))
+            bytecode.extend((bc.TAG, *add_number(tag_id)))
             bytecode.extend(tag_bytecode)
 
         return bytecode
+
+
+def add_number(number: int) -> [int, int]:
+    """adding a number in two bytes"""
+    first_byte = number >> 8
+    second_byte = number - (first_byte << 8)
+    return first_byte, second_byte
+
+def get_number(byte1: int, byte2: int) -> int:
+    return (byte1 << 8) + byte2

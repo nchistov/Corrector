@@ -89,7 +89,7 @@ class Vm:
                 command = (0, byte, tuple((next(bytes_iter) for _ in range(args_num[byte]))))
 
                 if command[1] == bc.TAG:  # TAG
-                    self.add_tag(self._get_number(*command[2]), position)
+                    self.add_tag(_get_number(*command[2]), position)
                 else:
                     self.commands.append(command)
                     position += 1
@@ -112,7 +112,7 @@ class Vm:
             self.position += 1
 
     def _load_tag(self, *args):
-        self.stack.append(self._get_number(args[0], args[1]))
+        self.stack.append(_get_number(args[0], args[1]))
 
     def _load_symbol(self, *args):
         self.stack.append(args[0])
@@ -163,15 +163,15 @@ class Vm:
 
     def _pop_jump_if(self, *args):
         if self.stack.pop():
-            self._jump(self._get_number(args[0], args[1]), self.position + 1)
+            self._jump(_get_number(args[0], args[1]), self.position + 1)
         else:
             self.position += 1
 
     def _pop_jump_if_else(self, *args):
         if self.stack.pop():
-            self._jump(self._get_number(args[0], args[1]), self.position + 1)
+            self._jump(_get_number(args[0], args[1]), self.position + 1)
         else:
-            self._jump(self._get_number(args[2], args[3]), self.position + 1)
+            self._jump(_get_number(args[2], args[3]), self.position + 1)
 
     def _return(self):
         self.position = self.call_stack.pop()
@@ -186,8 +186,9 @@ class Vm:
         self.call_stack.append(position)
         self.position = self.tags[tag_id]
 
-    def _get_number(self, first_byte: int, second_byte: int) -> int:
-        return (first_byte << 8) + second_byte
+
+def _get_number(first_byte: int, second_byte: int) -> int:
+    return (first_byte << 8) + second_byte
 
 
 class Tape:
