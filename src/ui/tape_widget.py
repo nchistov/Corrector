@@ -12,6 +12,7 @@ class TapeWidget(QtWidgets.QWidget):
         QtWidgets.QWidget.__init__(self, parent)
 
         self.box = QtWidgets.QGridLayout()
+        self.box.setSpacing(1)
 
         self.labels = [QtWidgets.QLabel(' ') for _ in range(11)]
 
@@ -21,7 +22,7 @@ class TapeWidget(QtWidgets.QWidget):
             else:
                 lbl.setStyleSheet('border: 1px solid;')
             lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            lbl.setFixedSize(QtCore.QSize(30, 60))
+            lbl.setFixedSize(QtCore.QSize(30, 40))
             self.box.addWidget(lbl, 0, i)
 
         self.right_btn = QtWidgets.QPushButton('→')
