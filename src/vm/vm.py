@@ -89,7 +89,7 @@ class Vm:
                 command = (0, byte, tuple((next(bytes_iter) for _ in range(args_num[byte]))))
 
                 if command[1] == bc.TAG:  # TAG
-                    self.add_tag(command[2][0], position)
+                    self.add_tag(self._get_number(*command[2]), position)
                 else:
                     self.commands.append(command)
                     position += 1

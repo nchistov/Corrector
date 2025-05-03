@@ -24,6 +24,8 @@ class Window(QtWidgets.QWidget):
                                 QtWidgets.QLabel('| $ % ~ @')]
 
         self.go_button.clicked.connect(self.run_command)
+        self.commands_input.returnPressed.connect(self.run_command)
+        self.reset_button.clicked.connect(self.reset)
 
         self.go_button.setFixedWidth(30)
         self.reset_button.setFixedWidth(30)
@@ -43,12 +45,18 @@ class Window(QtWidgets.QWidget):
         self.grid.addWidget(self.go_button, 3, 2)
         self.grid.addWidget(self.commands_input, 3, 3)
         self.grid.addWidget(self.alphabet_group, 2, 0, 2, 1)
-        self.grid.addWidget(self.tape, 1, 0)
+        self.grid.addWidget(self.tape, 0, 0, 2, 1)
 
         self.setLayout(self.grid)
 
         self.vm = Vm()
         self.compiler = Compiler()
+
+    def reset(self):
+        self.vm = Vm()
+        self.compiler = Compiler()
+        self.tape.update_tape(self.vm.tape.get_preview())
+        self.tape.update_box(self.vm.box)
 
     def run_command(self):
         command = self.commands_input.text()
@@ -59,3 +67,4 @@ class Window(QtWidgets.QWidget):
 
         self.vm.run(bc, command_bc)
         self.tape.update_tape(self.vm.tape.get_preview())
+        self.tape.update_box(self.vm.box)

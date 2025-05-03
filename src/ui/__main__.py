@@ -8,7 +8,7 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     app.setStyleSheet('''
     QLabel {
-        font-size: 10pt;
+        font-size: 15pt;
         font-family: monospace;
     }
     QTextEdit {
