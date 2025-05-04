@@ -32,7 +32,7 @@ class TapeWidget(QtWidgets.QWidget):
 
         self.box = QtWidgets.QLabel(' ')
         self.box.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.box.setStyleSheet('border: 4px solid red;')
+        self.box.setStyleSheet('border: 4px solid brown;')
         self.box.setFixedSize(QtCore.QSize(60, 60))
 
         self.grid.addWidget(self.box, 0, 9, 1, 2)
