@@ -46,4 +46,4 @@ class TapeWidget(QtWidgets.QWidget):
     def update(self):
         for v, l in zip(self.vm.tape.get_preview(), self.labels):
             l.setText(symbols[v])
-        self.box.setText(symbols[vm.box])
+        self.box.setText(symbols[self.vm.box])
