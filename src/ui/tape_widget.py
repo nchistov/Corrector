@@ -8,8 +8,10 @@ symbols = [' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
            ',', '!', '?', ';', ':', '\'', '"', '#', '|', '$', '%', '~', '@']
 
 class TapeWidget(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, vm, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
+
+        self.vm = vm
 
         self.grid = QtWidgets.QGridLayout()
         self.grid.setSpacing(1)
@@ -41,9 +43,7 @@ class TapeWidget(QtWidgets.QWidget):
 
         self.setLayout(self.grid)
 
-    def update_tape(self, values):
-        for v, l in zip(values, self.labels):
+    def update(self):
+        for v, l in zip(self.vm.tape.get_preview(), self.labels):
             l.setText(symbols[v])
-
-    def update_box(self, value):
-        self.box.setText(symbols[value])
+        self.box.setText(symbols[vm.box])

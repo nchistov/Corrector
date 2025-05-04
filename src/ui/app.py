@@ -9,6 +9,9 @@ class Window(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
 
+        self.vm = Vm()
+        self.compiler = Compiler()
+
         self.code_input = QtWidgets.QTextEdit()
         self.go_button = QtWidgets.QPushButton('GO')
         self.reset_button = QtWidgets.QPushButton('-')
@@ -34,7 +37,7 @@ class Window(QtWidgets.QWidget):
         self.alphabet_box = QtWidgets.QVBoxLayout()
         self.alphabet_group = QtWidgets.QGroupBox('АЛФАВИТ')
 
-        self.tape = TapeWidget()
+        self.tape = TapeWidget(self.vm)
 
         for lbl in self.alphabet_labels:
             self.alphabet_box.addWidget(lbl)
@@ -49,14 +52,9 @@ class Window(QtWidgets.QWidget):
 
         self.setLayout(self.grid)
 
-        self.vm = Vm()
-        self.compiler = Compiler()
-
     def reset(self):
         self.vm = Vm()
         self.compiler = Compiler()
-        self.tape.update_tape(self.vm.tape.get_preview())
-        self.tape.update_box(self.vm.box)
 
     def run_command(self):
         command = self.commands_input.text()
@@ -66,5 +64,4 @@ class Window(QtWidgets.QWidget):
         command_bc = self.compiler.compile_one_command(command)
 
         self.vm.run(bc, command_bc)
-        self.tape.update_tape(self.vm.tape.get_preview())
-        self.tape.update_box(self.vm.box)
+        self.tape.update()
