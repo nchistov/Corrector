@@ -2,6 +2,7 @@ from PySide6 import QtWidgets
 
 from .tape_widget import TapeWidget
 from ..compiler import Compiler
+from ..errors import CorrectorException
 from ..vm import Vm
 
 
@@ -60,8 +61,17 @@ class Window(QtWidgets.QWidget):
         command = self.commands_input.text()
         code = self.code_input.toPlainText()
 
-        bc = self.compiler.compile(code)
-        command_bc = self.compiler.compile_one_command(command)
+        try:
+            bc = self.compiler.compile(code)
+            command_bc = self.compiler.compile_one_command(command)
 
-        self.vm.run(bc, command_bc)
-        self.tape.update()
+            self.vm.run(bc, command_bc)
+            self.tape.update()
+        except CorrectorException as e:
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Ошибка",
+                e.args[0],
+                buttons=QtWidgets.QMessageBox.Ok,
+                defaultButton=QtWidgets.QMessageBox.Ok,
+            )
