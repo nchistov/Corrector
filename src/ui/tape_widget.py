@@ -31,6 +31,8 @@ class TapeWidget(QtWidgets.QWidget):
         self.left_btn = QtWidgets.QPushButton('←')
         self.right_btn.setFixedWidth(30)
         self.left_btn.setFixedWidth(30)
+        self.right_btn.clicked.connect(self._right)
+        self.left_btn.clicked.connect(self._left)
 
         self.box = QtWidgets.QLabel(' ')
         self.box.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -42,6 +44,14 @@ class TapeWidget(QtWidgets.QWidget):
         self.grid.addWidget(self.right_btn, 2, 10)
 
         self.setLayout(self.grid)
+
+    def _left(self):
+        self.vm.tape.move_left()
+        self.update()
+
+    def _right(self):
+        self.vm.tape.move_right()
+        self.update()
 
     def update(self):
         for v, l in zip(self.vm.tape.get_preview(), self.labels):
