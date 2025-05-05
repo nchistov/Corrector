@@ -84,7 +84,7 @@ class Window(QtWidgets.QWidget):
             result += '<br>'.join(text[line+1:]) + '</pre>'
             self.code_input.setHtml(result)
 
-        error = QtWidgets.QMessageBox.critical(
+        QtWidgets.QMessageBox.critical(
             self,
             "Ошибка",
             e.args[0],
