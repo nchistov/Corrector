@@ -68,10 +68,27 @@ class Window(QtWidgets.QWidget):
             self.vm.run(bc, command_bc)
             self.tape.update()
         except CorrectorException as e:
-            QtWidgets.QMessageBox.critical(
-                self,
-                "Ошибка",
-                e.args[0],
-                buttons=QtWidgets.QMessageBox.Ok,
-                defaultButton=QtWidgets.QMessageBox.Ok,
-            )
+            self.error(e)
+
+    def error(self, e):
+        if len(e.args) > 1:
+            line = e.args[1]
+            start = e.args[2]
+            end = e.args[3]
+
+            text = self.code_input.toPlainText().splitlines()
+            result = '<pre>' + '<br>'.join(text[:line])
+            if text[:line]:
+                result += '<br>'
+            result += text[line][:start] + '<span style="background-color: red;">' + text[line][start:end] + '</span>' + text[line][end:] + '<br>'
+            result += '<br>'.join(text[line+1:]) + '</pre>'
+            self.code_input.setHtml(result)
+
+        error = QtWidgets.QMessageBox.critical(
+            self,
+            "Ошибка",
+            e.args[0],
+            buttons=QtWidgets.QMessageBox.Ok,
+            defaultButton=QtWidgets.QMessageBox.Ok,
+        )
+        self.code_input.setText(self.code_input.toPlainText())

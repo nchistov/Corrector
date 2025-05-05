@@ -43,18 +43,20 @@ class Compiler:
                     if tok.type == 'WORD' or tok.type == 'SYMBOL':
                         self._add_tag(tok.value)
                     else:
-                        raise CorrectorSyntaxError('Ожидалось имя процедуры')
+                        raise CorrectorSyntaxError('Ожидалось имя процедуры', tok.line, tok.start, tok.end)
         except StopIteration:
             return
 
     def compile(self, code: str) -> bytearray:
         self.startup(code)
 
+        last_tok = None
         for tok in self.parser.parse(code):
             self.handle(tok)
+            last_tok = tok
 
         if self.stack:
-            raise CorrectorSyntaxError('Незавершённый блок!')
+            raise CorrectorSyntaxError('Незавершённый блок!', last_tok.line, last_tok.start, last_tok.end)
 
         return self.compose()
 
@@ -98,7 +100,7 @@ class Compiler:
             if tok.type == 'KEYWORD' and tok.value == 'ЭТО':
                 self.stack.append(stack_elements.Procedure('', -1))
             else:
-                raise CorrectorSyntaxError('На внешнем уровне программы не должно быть команд')
+                raise CorrectorSyntaxError('На внешнем уровне программы не должно быть команд', tok.line, tok.start, tok.end)
         else:
             match self.stack[-1]:
                 case stack_elements.Procedure:
@@ -133,7 +135,7 @@ class Compiler:
                 state.name = tok.value
                 state.tag = self.procedures[state.name]
             else:
-                raise CorrectorSyntaxError('Ожидалось имя процедуры')
+                raise CorrectorSyntaxError('Ожидалось имя процедуры', tok.line, tok.start, tok.end)
         else:
             self.handle_command(tok, state)
 
@@ -162,7 +164,7 @@ class Compiler:
                     self.stack.append(stack_elements.CodeBlock(False, False, else_tag))
                     state.else_check = True
                 else:
-                    raise CorrectorSyntaxError('Недопустимые два блока ИНАЧЕ')
+                    raise CorrectorSyntaxError('Недопустимые два блока ИНАЧЕ', tok.line, tok.start, tok.end)
             else:
                 self.stack.pop()
                 self.handle(tok)
@@ -193,11 +195,11 @@ class Compiler:
                 if 0 < tok.value < 10:
                     state.iterations = tok.value - 1
                 else:
-                    raise CorrectorSyntaxError('Ожидалось кол-во повторений')
+                    raise CorrectorSyntaxError('Ожидалось кол-во повторений', tok.line, tok.start, tok.end)
             elif tok.type == 'NUMBER':
                 state.iterations = tok.value
             else:
-                raise CorrectorSyntaxError('Ожидалось кол-во повторений')
+                raise CorrectorSyntaxError('Ожидалось кол-во повторений', tok.line, tok.start, tok.end)
 
             tag = self._add_tag()
             self.tags[state.tag].extend((bc.LOAD_TAG, *add_number(tag), bc.POP_JUMP))
@@ -215,7 +217,7 @@ class Compiler:
                     if state == stack_elements.Procedure:
                         self.handle_end()
                     else:
-                        raise CorrectorSyntaxError('Неожиданное ключевое слово КОНЕЦ')
+                        raise CorrectorSyntaxError('Неожиданное ключевое слово КОНЕЦ', tok.line, tok.start, tok.end)
                 case 'ЕСЛИ':
                     self.stack.append(stack_elements.If(False, False, -1, state.tag, False, False))
                 case 'ПОВТОРИ':
@@ -223,7 +225,7 @@ class Compiler:
                 case 'ПОКА':
                     self.stack.append(stack_elements.WhileLoop(False, False, -1, state.tag, False))
                 case _:
-                    raise CorrectorSyntaxError(f'Неожиданное ключевое слово {tok.value}')
+                    raise CorrectorSyntaxError(f'Неожиданное ключевое слово {tok.value}', tok.line, tok.start, tok.end)
         elif tok.type == "COMMAND":
             if tok.value == 'ПИШИ':
                 self.stack.append(stack_elements.WriteCommand(state.tag))
@@ -233,7 +235,7 @@ class Compiler:
             if tok.value in self.procedures.keys():
                 self.handle_procedure_call(tok.value)
             else:
-                raise CorrectorSyntaxError(f'Не определена процедура с именем {tok.value}')
+                raise CorrectorSyntaxError(f'Не определена процедура с именем {tok.value}', tok.line, tok.start, tok.end)
 
     def handle_code_block(self, tok, state):
         if not state.started:
@@ -242,7 +244,7 @@ class Compiler:
             elif tok.type == 'SYMBOL' and tok.value == 56:  # {
                 state.multiline = True
             else:
-                raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}')
+                raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}', tok.line, tok.start, tok.end)
             state.started = True
         else:
             if state.multiline:
@@ -251,7 +253,7 @@ class Compiler:
                 elif tok.type == 'SYMBOL' and tok.value == 57:  # }
                     self.handle_end()
                 else:
-                    raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}')
+                    raise CorrectorSyntaxError(f'Неожиданный токен {tok.value}', tok.line, tok.start, tok.end)
             else:
                 self.handle_end()
                 self.handle(tok)
@@ -273,7 +275,7 @@ class Compiler:
             self.tags[state.tag].extend((bc.LOAD_SYMBOL, tok.value, bc.POP_SET_TAPE))
             self.stack.pop()
         else:
-            raise CorrectorSyntaxError('Ожидался символ')
+            raise CorrectorSyntaxError('Ожидался символ', tok.line, tok.start, tok.end)
 
     def handle_procedure_call(self, name: str):
         self.tags[self.stack[-1].tag].extend((bc.LOAD_TAG, *add_number(self.procedures[name]), bc.POP_JUMP))
