@@ -22,12 +22,15 @@ TAG <id> | 0x00 <id> -- начало тега
 0x11 -- BOOL_NOT
 0x12 -- IS_DIGIT
 """
+import time
+
 from .. import errors
 from .. import bytecode as bc
 
 ByteCommand = tuple[int, int, tuple[int]]
 args_num = {0x00: 2, 0x02: 2, 0x03: 1, 0x04: 1, 0x05: 0, 0x06: 0, 0x07: 0, 0x08: 0, 0x09: 0, 0x0A: 0, 0x0B: 0, 0x0C: 0,
         0x0D: 0, 0x0E: 2, 0x0F: 4, 0x10: 0, 0x11: 0, 0x12: 0}
+WAIT_TIME = 0.5
 
 
 class Vm:
@@ -42,7 +45,8 @@ class Vm:
         self.position = 0
         self.commands: list[ByteCommand] = []
 
-        self.operations = {0x02: self._load_tag,
+        self.operations = {0x01: self._wait,
+                           0x02: self._load_tag,
                            0x03: self._load_symbol,
                            0x04: self._bin_op,
                            0x05: self._right,
@@ -110,6 +114,9 @@ class Vm:
 
         if command not in (bc.POP_JUMP, bc.POP_JUMP_IF, bc.POP_JUMP_IF_ELSE, bc.RETURN):  # Не произошло перехода
             self.position += 1
+
+    def _wait(self):
+        time.sleep(WAIT_TIME)
 
     def _load_tag(self, *args):
         self.stack.append(_get_number(args[0], args[1]))

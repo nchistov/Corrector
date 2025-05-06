@@ -79,3 +79,9 @@ def test_compile_one_command():
     bc = c.compile_one_command(command)
 
     assert bc == bytearray((RIGHT,))
+
+def test_waiting():
+    code = 'ЭТО Программа ВПРАВО КОНЕЦ'
+    bc = c.compile(code, waiting=True)
+
+    assert bc == bytearray((TAG, 0x00, 0x00, RIGHT, WAIT, RETURN))
