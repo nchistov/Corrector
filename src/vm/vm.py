@@ -211,14 +211,14 @@ class Tape:
         return self.right_data[self.position] if self.position >= 0 else self.left_data[-self.position-1]
 
     def move_left(self):
-        if self.position < 0  and -self.position == len(self.left_data):
-            self.left_data.append(0)
         self.position -= 1
+        if self.position < 0  and -self.position >= len(self.left_data):
+            self.left_data.append(0)
 
     def move_right(self):
+        self.position += 1
         if self.position == len(self.right_data) - 1:
             self.right_data.append(0)
-        self.position += 1
 
     def get_preview(self):
         for pos in range(self.position-5, self.position+6):
