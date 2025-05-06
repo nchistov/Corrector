@@ -22,8 +22,6 @@ TAG <id> | 0x00 <id> -- начало тега
 0x11 -- BOOL_NOT
 0x12 -- IS_DIGIT
 """
-import time
-
 from .. import errors
 from .. import bytecode as bc
 
