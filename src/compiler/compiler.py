@@ -239,7 +239,7 @@ class Compiler:
 
     def handle_code_block(self, tok, state):
         if not state.started:
-            if tok.type in ('COMMAND', 'WORD'):
+            if tok.type in ('COMMAND', 'WORD', 'KEYWORD'):
                 self.handle_command(tok, state)
             elif tok.type == 'SYMBOL' and tok.value == 56:  # {
                 state.multiline = True
