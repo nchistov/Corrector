@@ -45,8 +45,7 @@ class Vm:
         self.position = 0
         self.commands: list[ByteCommand] = []
 
-        self.operations = {0x01: self._wait,
-                           0x02: self._load_tag,
+        self.operations = {0x02: self._load_tag,
                            0x03: self._load_symbol,
                            0x04: self._bin_op,
                            0x05: self._right,
@@ -114,9 +113,6 @@ class Vm:
 
         if command not in (bc.POP_JUMP, bc.POP_JUMP_IF, bc.POP_JUMP_IF_ELSE, bc.RETURN):  # Не произошло перехода
             self.position += 1
-
-    def _wait(self):
-        time.sleep(WAIT_TIME)
 
     def _load_tag(self, *args):
         self.stack.append(_get_number(args[0], args[1]))

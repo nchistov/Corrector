@@ -9,7 +9,6 @@ class Compiler:
         self.procedures = {}
         self.tags = []
         self.stack = []
-        self.waiting = False
 
         self.commands = {
             'ВПРАВО': (bc.RIGHT,), 'ВЛЕВО': (bc.LEFT,), 'ЯЩИК+': (bc.LOAD_TAPE, bc.POP_SET_BOX),
@@ -48,9 +47,8 @@ class Compiler:
         except StopIteration:
             return
 
-    def compile(self, code: str, waiting=False) -> bytearray:
+    def compile(self, code: str) -> bytearray:
         self.startup(code)
-        self.waiting = waiting
 
         last_tok = None
         for tok in self.parser.parse(code):
@@ -233,8 +231,6 @@ class Compiler:
                 self.stack.append(stack_elements.WriteCommand(state.tag))
             else:
                 self.tags[state.tag].extend(self.commands[tok.value])
-                if self.waiting:
-                    self.tags[state.tag].append(bc.WAIT)
         elif tok.type == "WORD" or tok.type == "SYMBOL":
             if tok.value in self.procedures.keys():
                 self.handle_procedure_call(tok.value)
@@ -277,8 +273,6 @@ class Compiler:
     def handle_symbol(self, tok, state):
         if tok.type == 'SYMBOL':
             self.tags[state.tag].extend((bc.LOAD_SYMBOL, tok.value, bc.POP_SET_TAPE))
-            if self.waiting:
-                self.tags[state.tag].append(bc.WAIT)
             self.stack.pop()
         else:
             raise CorrectorSyntaxError('Ожидался символ', tok.line, tok.start, tok.end)
